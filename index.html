@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-PT">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Verdin Mercado</title>
+  <title>Cantinho Mercado</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="announcement">Entrega grátis em compras acima de R$ 120</div>
+  <div class="announcement">Entrega gratuita em compras superiores a 35 €</div>
   <header>
     <div class="header-inner">
       <button class="icon-button mobile-menu" id="menuButton" aria-label="Abrir menu" aria-expanded="false">
@@ -24,14 +24,14 @@
       </nav>
       <label class="search desktop-search">
         <svg class="svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
-        <input class="search-input" type="search" placeholder="O que você procura?" aria-label="Pesquisar produtos">
+        <input class="search-input" type="search" placeholder="O que procura?" aria-label="Pesquisar produtos">
       </label>
-      <button class="icon-button account-button" aria-label="Minha conta">
+      <button class="icon-button account-button" aria-label="A minha conta">
         <svg class="svg" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
       </button>
-      <button class="icon-button cart-button" aria-label="Carrinho com 2 itens">
+      <button class="icon-button cart-button" aria-label="Carrinho com 2 artigos">
         <svg class="svg" viewBox="0 0 24 24"><path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
-        <span class="cart-count" id="cartCount">2</span>
+        <span class="cart-count" id="cartCount">69</span>
       </button>
     </div>
     <nav class="mobile-nav" id="mobileNav">
@@ -41,23 +41,23 @@
     </nav>
     <label class="search mobile-search">
       <svg class="svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
-      <input class="search-input" type="search" placeholder="Buscar produtos" aria-label="Pesquisar produtos">
+      <input class="search-input" type="search" placeholder="Pesquisar produtos" aria-label="Pesquisar produtos">
     </label>
   </header>
 
   <main>
     <section class="hero">
       <div class="hero-copy">
-        <span class="eyebrow">Da feira para sua casa</span>
-        <h1>Frescor que cabe na sua rotina.</h1>
-        <p>Produtos selecionados todos os dias, preços honestos e entrega no horário que funciona para você.</p>
-        <a href="#ofertas" class="primary-link">Comprar agora
+        <span class="eyebrow">Do produtor à sua mesa</span>
+        <h1>Frescura que cabe no seu dia a dia.</h1>
+        <p>Produtos escolhidos diariamente, preços justos e entregas à hora que mais lhe convém.</p>
+        <a href="#categorias" class="primary-link">Encomendar agora
           <svg class="svg" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
         </a>
       </div>
       <div class="hero-image">
-        <img src="https://images.unsplash.com/photo-1714386893630-b7a148f77efd?auto=format&fit=crop&w=1200&q=85" alt="Cesta com frutas e legumes frescos">
-        <div class="fresh-label"><small>Colhido hoje</small><strong>100% fresco</strong></div>
+        <img src="https://images.unsplash.com/photo-1714386893630-b7a148f77efd?auto=format&fit=crop&w=1200&q=85" alt="Cabaz com frutas e legumes frescos">
+        <div class="fresh-label"><small>Frescos do dia</small><strong>100% fresco</strong></div>
       </div>
     </section>
 
@@ -65,35 +65,35 @@
       <div class="section-heading">
         <div>
           <p class="section-kicker">Compre por categoria</p>
-          <h2>Tudo o que você precisa</h2>
+          <h2>Tudo o que precisa</h2>
         </div>
         <div class="categories" aria-label="Filtrar por categoria">
           <button class="category active" data-category="Todos">Todos</button>
-          <button class="category" data-category="Hortifruti">Hortifruti</button>
-          <button class="category" data-category="Orgânicos">Orgânicos</button>
+          <button class="category" data-category="Frutas e legumes">Frutas e legumes</button>
+          <button class="category" data-category="Biológicos">Biológicos</button>
           <button class="category" data-category="Padaria">Padaria</button>
           <button class="category" data-category="Bebidas">Bebidas</button>
         </div>
       </div>
       <div class="product-grid" id="productGrid">
-        <article class="product-card" data-name="Tomate italiano" data-category="Hortifruti">
+        <article class="product-card" data-name="Tomate italiano" data-category="Frutas e legumes">
           <div class="product-image"><img src="https://images.unsplash.com/photo-1596776572010-93e181f9fc07?auto=format&fit=crop&w=600&q=80" alt="Tomates italianos"><span class="tag">-18%</span></div>
-          <div class="product-info"><p class="unit">Bandeja 500g</p><h3>Tomate italiano</h3><div class="product-bottom"><p class="price">R$ 7,49</p><button class="add-button" aria-label="Adicionar Tomate italiano ao carrinho"><svg class="svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
+          <div class="product-info"><p class="unit">Embalagem de 500 g</p><h3>Tomate italiano</h3><div class="product-bottom"><p class="price">2,49 €</p><button class="add-button" aria-label="Adicionar tomate italiano ao carrinho"><svg class="svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
         </article>
-        <article class="product-card" data-name="Cesta de orgânicos" data-category="Orgânicos">
-          <div class="product-image"><img src="https://images.unsplash.com/photo-1418669112725-fb499fb61127?auto=format&fit=crop&w=600&q=80" alt="Cesta de produtos orgânicos"><span class="tag">Favorito</span></div>
-          <div class="product-info"><p class="unit">8 itens selecionados</p><h3>Cesta de orgânicos</h3><div class="product-bottom"><p class="price">R$ 34,90</p><button class="add-button" aria-label="Adicionar Cesta de orgânicos ao carrinho"><svg class="svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
+        <article class="product-card" data-name="Cabaz de produtos biológicos" data-category="Biológicos">
+          <div class="product-image"><img src="https://images.unsplash.com/photo-1418669112725-fb499fb61127?auto=format&fit=crop&w=600&q=80" alt="Cabaz de produtos biológicos"><span class="tag">Favorito</span></div>
+          <div class="product-info"><p class="unit">8 produtos selecionados</p><h3>Cabaz de produtos biológicos</h3><div class="product-bottom"><p class="price">19,90 €</p><button class="add-button" aria-label="Adicionar cabaz de produtos biológicos ao carrinho"><svg class="svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
         </article>
-        <article class="product-card" data-name="Mix de legumes" data-category="Hortifruti">
-          <div class="product-image"><img src="https://images.unsplash.com/photo-1441123285228-1448e608f3d5?auto=format&fit=crop&w=600&q=80" alt="Mix de legumes frescos"><span class="tag">-12%</span></div>
-          <div class="product-info"><p class="unit">Pacote 1kg</p><h3>Mix de legumes</h3><div class="product-bottom"><p class="price">R$ 12,90</p><button class="add-button" aria-label="Adicionar Mix de legumes ao carrinho"><svg class="svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
+        <article class="product-card" data-name="Mistura de legumes" data-category="Frutas e legumes">
+          <div class="product-image"><img src="https://images.unsplash.com/photo-1441123285228-1448e608f3d5?auto=format&fit=crop&w=600&q=80" alt="Mistura de legumes frescos"><span class="tag">-12%</span></div>
+          <div class="product-info"><p class="unit">Embalagem de 1 kg</p><h3>Mistura de legumes</h3><div class="product-bottom"><p class="price">4,99 €</p><button class="add-button" aria-label="Adicionar mistura de legumes ao carrinho"><svg class="svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
         </article>
-        <article class="product-card" data-name="Seleção da feira" data-category="Orgânicos">
-          <div class="product-image"><img src="https://images.unsplash.com/photo-1531741912931-99204c63a8cb?auto=format&fit=crop&w=600&q=80" alt="Seleção de produtos frescos"><span class="tag">Novo</span></div>
-          <div class="product-info"><p class="unit">Cesta 12 itens</p><h3>Seleção da feira</h3><div class="product-bottom"><p class="price">R$ 49,90</p><button class="add-button" aria-label="Adicionar Seleção da feira ao carrinho"><svg class="svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
+        <article class="product-card" data-name="Cabaz da época" data-category="Biológicos">
+          <div class="product-image"><img src="https://images.unsplash.com/photo-1531741912931-99204c63a8cb?auto=format&fit=crop&w=600&q=80" alt="Seleção de produtos frescos"><span class="tag">Novidade</span></div>
+          <div class="product-info"><p class="unit">Cabaz com 12 produtos</p><h3>Cabaz da época</h3><div class="product-bottom"><p class="price">29,90 €</p><button class="add-button" aria-label="Adicionar cabaz da época ao carrinho"><svg class="svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
         </article>
       </div>
-      <div class="empty" id="emptyMessage">Nenhum produto encontrado. Tente buscar por outro item.</div>
+      <div class="empty" id="emptyMessage">Não foram encontrados produtos. Experimente outra pesquisa.</div>
     </section>
   </main>
 
@@ -102,13 +102,13 @@
       <div>
         <span class="delivery-pill">
           <svg class="svg" viewBox="0 0 24 24"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>
-          Entrega no mesmo dia
+          Entrega no próprio dia
         </span>
-        <h2>Mercado simples, do jeito que deve ser.</h2>
+        <h2>Um mercado simples, como deve ser.</h2>
       </div>
       <div class="about-copy">
         <p>Escolhemos cada produto com cuidado e trabalhamos com produtores locais para levar mais sabor à sua mesa.</p>
-        <a href="#">Conheça a Verdin
+        <a href="#">Saiba mais sobre O Cantinho
           <svg class="svg" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
         </a>
       </div>
@@ -117,72 +117,11 @@
 
   <footer>
     <div class="footer-inner">
-      <p>© 2025 Verdin Mercado. Todos os direitos reservados.</p>
-      <p>Feito com cuidado para sua casa.</p>
+      <p>© 2026 O Cantinho Mercado. Todos os direitos reservados.</p>
+      <p>Feito com cuidado para si e para a sua casa.</p>
     </div>
   </footer>
 
-  <script>
-    const categoryButtons = document.querySelectorAll(".category");
-    const productCards = document.querySelectorAll(".product-card");
-    const searchInputs = document.querySelectorAll(".search-input");
-    const emptyMessage = document.getElementById("emptyMessage");
-    const cartCount = document.getElementById("cartCount");
-    const cartButton = document.querySelector(".cart-button");
-    const menuButton = document.getElementById("menuButton");
-    const mobileNav = document.getElementById("mobileNav");
-
-    let selectedCategory = "Todos";
-    let cartItems = 2;
-
-    function filterProducts() {
-      const query = (searchInputs[0].value || searchInputs[1].value || "").trim().toLocaleLowerCase("pt");
-      let visibleCount = 0;
-      productCards.forEach(card => {
-        const matchesCategory = selectedCategory === "Todos" || card.dataset.category === selectedCategory;
-        const matchesSearch = card.dataset.name.toLocaleLowerCase("pt").includes(query);
-        const visible = matchesCategory && matchesSearch;
-        card.style.display = visible ? "" : "none";
-        if (visible) visibleCount++;
-      });
-      emptyMessage.style.display = visibleCount === 0 ? "block" : "none";
-    }
-
-    categoryButtons.forEach(button => {
-      button.addEventListener("click", () => {
-        selectedCategory = button.dataset.category;
-        categoryButtons.forEach(item => item.classList.toggle("active", item === button));
-        filterProducts();
-      });
-    });
-
-    searchInputs.forEach(input => {
-      input.addEventListener("input", () => {
-        searchInputs.forEach(other => { if (other !== input) other.value = input.value; });
-        filterProducts();
-      });
-    });
-
-    document.querySelectorAll(".add-button").forEach(button => {
-      button.addEventListener("click", () => {
-        cartItems++;
-        cartCount.textContent = cartItems;
-        cartButton.setAttribute("aria-label", `Carrinho com ${cartItems} itens`);
-      });
-    });
-
-    menuButton.addEventListener("click", () => {
-      const isOpen = mobileNav.classList.toggle("open");
-      menuButton.setAttribute("aria-expanded", String(isOpen));
-      menuButton.setAttribute("aria-label", isOpen ? "Fechar menu" : "Abrir menu");
-    });
-
-    mobileNav.querySelectorAll("a").forEach(link => {
-      link.addEventListener("click", () => {
-        mobileNav.classList.remove("open");
-        menuButton.setAttribute("aria-expanded", "false");
-      });
-    });
-  </script>
+  <script src="javascript.js"></script>
 </body>
 </html>
