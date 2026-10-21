@@ -1,0 +1,184 @@
+:root {
+  color-scheme: light;
+  --cream: #FFFDF2;
+  --green: #18352B;
+  --green-light: #E9F0E8;
+  --yellow: #F5D538;
+  --muted: #527064;
+  --border: rgba(24, 53, 43, .14);
+  --surface: #fff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--green);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+.account-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px max(24px, calc((100% - 1120px) / 2));
+  background: rgba(255, 253, 242, .96);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--green);
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--yellow);
+}
+
+.brand-mark svg {
+  width: 22px;
+  height: 22px;
+}
+
+.back-link {
+  color: var(--green);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.account-main {
+  width: min(100% - 32px, 960px);
+  margin: 56px auto;
+}
+
+.intro {
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.eyebrow {
+  color: var(--green);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.intro h1 {
+  margin: 8px 0;
+  font-size: clamp(2rem, 5vw, 2.8rem);
+}
+
+.intro > p:last-child,
+.account-card > p {
+  color: var(--muted);
+}
+
+.account-card {
+  width: min(100%, 560px);
+  margin: 0 auto;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.account-card h2 {
+  margin: 0;
+}
+
+.account-card form {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.account-card label {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.account-card label span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.account-card input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.account-card input:focus {
+  border-color: var(--green);
+  outline: 2px solid var(--green-light);
+}
+
+.account-card button {
+  margin-top: 12px;
+  padding: 13px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--yellow);
+  color: var(--green);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.account-switch {
+  margin: 22px 0 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+.account-switch a {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.alert {
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin: 12px 0;
+  font-size: 0.95rem;
+}
+.alert ul { margin: 0; padding-left: 18px; }
+.alert-error { background: #fdecea; color: #8a1f17; border: 1px solid #f5c2bd; }
+.alert-ok    { background: #e8f5e9; color: #1e5a26; border: 1px solid #b7dcbb; }
+
+
+@media (max-width: 680px) {
+  .account-header {
+    padding: 16px;
+  }
+
+  .account-main {
+    margin: 36px auto;
+  }
+
+  .account-card {
+    padding: 22px;
+  }
+}
