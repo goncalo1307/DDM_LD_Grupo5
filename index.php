@@ -60,9 +60,6 @@ if ($logado) {
             </div>
             <a href="conta/perfil.php">O meu perfil</a>
             <a href="conta/perfil.php#moradas">As minhas moradas</a>
-            <?php if ($tipoUtilizador === 'admin'): ?>
-              <a href="admin/index.php">Administração</a>
-            <?php endif; ?>
             <a href="conta/logout.php" class="logout-link">Terminar sessão</a>
           </div>
         </details>
@@ -76,6 +73,9 @@ if ($logado) {
         <svg class="svg" viewBox="0 0 24 24"><path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
         <span class="cart-count" id="cartCount"><?= $totalCarrinho ?></span>
       </button>
+      <?php if ($logado && $tipoUtilizador === 'admin'): ?>
+        <a class="admin-access-button" href="admin.php">Admin</a>
+      <?php endif; ?>
     </div>
     <nav class="mobile-nav" id="mobileNav">
       <a href="#ofertas">Ofertas</a>
