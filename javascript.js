@@ -1,35 +1,22 @@
-    const categoryButtons = document.querySelectorAll(".category");
     const productCards = document.querySelectorAll(".product-card");
     const searchInputs = document.querySelectorAll(".search-input");
     const emptyMessage = document.getElementById("emptyMessage");
-    const cartCount = document.getElementById("cartCount");
-    const cartButton = document.querySelector(".cart-button");
     const menuButton = document.getElementById("menuButton");
     const mobileNav = document.getElementById("mobileNav");
+    const initialQuery = new URLSearchParams(window.location.search).get("q") || "";
 
-    let selectedCategory = "Todos";
-    let cartItems = 2;
+    searchInputs.forEach(input => { input.value = initialQuery; });
 
     function filterProducts() {
       const query = (searchInputs[0].value || searchInputs[1].value || "").trim().toLocaleLowerCase("pt");
       let visibleCount = 0;
       productCards.forEach(card => {
-        const matchesCategory = selectedCategory === "Todos" || card.dataset.category === selectedCategory;
         const matchesSearch = card.dataset.name.toLocaleLowerCase("pt").includes(query);
-        const visible = matchesCategory && matchesSearch;
-        card.style.display = visible ? "" : "none";
-        if (visible) visibleCount++;
+        card.style.display = matchesSearch ? "" : "none";
+        if (matchesSearch) visibleCount++;
       });
-      emptyMessage.style.display = visibleCount === 0 ? "block" : "none";
+      emptyMessage.style.display = productCards.length > 0 && visibleCount === 0 ? "block" : "none";
     }
-
-    categoryButtons.forEach(button => {
-      button.addEventListener("click", () => {
-        selectedCategory = button.dataset.category;
-        categoryButtons.forEach(item => item.classList.toggle("active", item === button));
-        filterProducts();
-      });
-    });
 
     searchInputs.forEach(input => {
       input.addEventListener("input", () => {
@@ -38,13 +25,7 @@
       });
     });
 
-    document.querySelectorAll(".add-button").forEach(button => {
-      button.addEventListener("click", () => {
-        cartItems++;
-        cartCount.textContent = cartItems;
-        cartButton.setAttribute("aria-label", `Carrinho com ${cartItems} artigos`);
-      });
-    });
+    filterProducts();
 
     menuButton.addEventListener("click", () => {
       const isOpen = mobileNav.classList.toggle("open");

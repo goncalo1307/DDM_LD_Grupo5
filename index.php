@@ -19,6 +19,15 @@ if ($logado) {
     $stmt->execute([(int) $_SESSION['utilizador_id']]);
     $totalCarrinho = (int) $stmt->fetchColumn();
 }
+
+$stmt = $pdo->query(
+    'SELECT IDProduto, Nome, Marca, Preco, PrecoPromocional,
+            Unidade, Imagem, Destaque
+     FROM Produto
+     WHERE Ativo = 1
+     ORDER BY Destaque DESC, Nome ASC'
+);
+$produtos = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="pt-PT">
@@ -114,36 +123,57 @@ if ($logado) {
     <section class="products-section" id="categorias">
       <div class="section-heading">
         <div>
-          <p class="section-kicker">Compre por categoria</p>
+          <p class="section-kicker">Produtos selecionados para si</p>
           <h2>Tudo o que precisa</h2>
-        </div>
-        <div class="categories" aria-label="Filtrar por categoria">
-          <button class="category active" data-category="Todos">Todos</button>
-          <button class="category" data-category="Frutas e legumes">Frutas e legumes</button>
-          <button class="category" data-category="Biológicos">Biológicos</button>
-          <button class="category" data-category="Padaria">Padaria</button>
-          <button class="category" data-category="Bebidas">Bebidas</button>
         </div>
       </div>
       <div class="product-grid" id="productGrid">
-        <article class="product-card" data-name="Tomate italiano" data-category="Frutas e legumes">
-          <div class="product-image"><img src="https://images.unsplash.com/photo-1596776572010-93e181f9fc07?auto=format&fit=crop&w=600&q=80" alt="Tomates italianos"><span class="tag">-18%</span></div>
-          <div class="product-info"><p class="unit">Embalagem de 500 g</p><h3>Tomate italiano</h3><div class="product-bottom"><p class="price">2,49 €</p><button class="add-button" aria-label="Adicionar tomate italiano ao carrinho"><svg class="svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
-        </article>
-        <article class="product-card" data-name="Cabaz de produtos biológicos" data-category="Biológicos">
-          <div class="product-image"><img src="https://images.unsplash.com/photo-1418669112725-fb499fb61127?auto=format&fit=crop&w=600&q=80" alt="Cabaz de produtos biológicos"><span class="tag">Favorito</span></div>
-          <div class="product-info"><p class="unit">8 produtos selecionados</p><h3>Cabaz de produtos biológicos</h3><div class="product-bottom"><p class="price">19,90 €</p><button class="add-button" aria-label="Adicionar cabaz de produtos biológicos ao carrinho"><svg class="svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
-        </article>
-        <article class="product-card" data-name="Mistura de legumes" data-category="Frutas e legumes">
-          <div class="product-image"><img src="https://images.unsplash.com/photo-1441123285228-1448e608f3d5?auto=format&fit=crop&w=600&q=80" alt="Mistura de legumes frescos"><span class="tag">-12%</span></div>
-          <div class="product-info"><p class="unit">Embalagem de 1 kg</p><h3>Mistura de legumes</h3><div class="product-bottom"><p class="price">4,99 €</p><button class="add-button" aria-label="Adicionar mistura de legumes ao carrinho"><svg class="svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
-        </article>
-        <article class="product-card" data-name="Cabaz da época" data-category="Biológicos">
-          <div class="product-image"><img src="https://images.unsplash.com/photo-1531741912931-99204c63a8cb?auto=format&fit=crop&w=600&q=80" alt="Seleção de produtos frescos"><span class="tag">Novidade</span></div>
-          <div class="product-info"><p class="unit">Cabaz com 12 produtos</p><h3>Cabaz da época</h3><div class="product-bottom"><p class="price">29,90 €</p><button class="add-button" aria-label="Adicionar cabaz da época ao carrinho"><svg class="svg" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
-        </article>
+        <?php foreach ($produtos as $produto):
+            $preco = (float) $produto['Preco'];
+            $precoPromocional = (float) ($produto['PrecoPromocional'] ?? 0);
+            $emPromocao = $precoPromocional > 0 && $precoPromocional < $preco;
+            $precoAtual = $emPromocao ? $precoPromocional : $preco;
+            $nomeProduto = (string) $produto['Nome'];
+        ?>
+          <article class="product-card" data-name="<?= e($nomeProduto) ?>">
+            <a class="product-image product-image-link" href="produto.php?id=<?= (int) $produto['IDProduto'] ?>" aria-label="Ver <?= e($nomeProduto) ?>">
+              <?php if (!empty($produto['Imagem'])): ?>
+                <img src="<?= e((string) $produto['Imagem']) ?>" alt="<?= e($nomeProduto) ?>">
+              <?php else: ?>
+                <span class="image-placeholder">Imagem indisponível</span>
+              <?php endif; ?>
+              <?php if ($emPromocao): ?>
+                <span class="tag">Promoção</span>
+              <?php elseif (!empty($produto['Destaque'])): ?>
+                <span class="tag">Destaque</span>
+              <?php endif; ?>
+            </a>
+            <div class="product-info">
+              <?php if (!empty($produto['Unidade'])): ?>
+                <p class="unit"><?= e((string) $produto['Unidade']) ?></p>
+              <?php elseif (!empty($produto['Marca'])): ?>
+                <p class="unit"><?= e((string) $produto['Marca']) ?></p>
+              <?php endif; ?>
+              <h3><a href="produto.php?id=<?= (int) $produto['IDProduto'] ?>"><?= e($nomeProduto) ?></a></h3>
+              <div class="product-bottom">
+                <p class="price">
+                  <?php if ($emPromocao): ?>
+                    <span class="old-price"><?= number_format($preco, 2, ',', '.') ?> €</span>
+                  <?php endif; ?>
+                  <?= number_format($precoAtual, 2, ',', '.') ?> €
+                </p>
+                <a class="add-button details-button" href="produto.php?id=<?= (int) $produto['IDProduto'] ?>" aria-label="Ver detalhes de <?= e($nomeProduto) ?>">
+                  <svg class="svg" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
+                </a>
+              </div>
+            </div>
+          </article>
+        <?php endforeach; ?>
       </div>
       <div class="empty" id="emptyMessage">Não foram encontrados produtos. Experimente outra pesquisa.</div>
+      <?php if (!$produtos): ?>
+        <div class="empty empty-visible">Ainda não existem produtos disponíveis.</div>
+      <?php endif; ?>
     </section>
   </main>
 
