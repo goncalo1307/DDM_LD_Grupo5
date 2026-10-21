@@ -1,3 +1,25 @@
+<?php
+require __DIR__ . '/conta/ligacao.php';
+
+$logado         = !empty($_SESSION['utilizador_id']);
+$nomeUtilizador = $_SESSION['utilizador_nome'] ?? '';
+$primeiroNome   = $nomeUtilizador !== '' ? explode(' ', trim($nomeUtilizador))[0] : '';
+$inicial        = $primeiroNome !== '' ? mb_strtoupper(mb_substr($primeiroNome, 0, 1)) : '';
+$tipoUtilizador = $_SESSION['utilizador_tipo'] ?? 'cliente';
+
+// Nº de artigos no carrinho do utilizador
+$totalCarrinho = 0;
+if ($logado) {
+    $stmt = $pdo->prepare(
+        'SELECT COALESCE(SUM(ic.Quantidade), 0)
+         FROM ItemCarrinho ic
+         JOIN Carrinho c ON c.IDCarrinho = ic.IDCarrinho
+         WHERE c.IDUtilizador = ?'
+    );
+    $stmt->execute([(int) $_SESSION['utilizador_id']]);
+    $totalCarrinho = (int) $stmt->fetchColumn();
+}
+?>
 <!DOCTYPE html>
 <html lang="pt-PT">
 <head>
@@ -13,7 +35,7 @@
       <button class="icon-button mobile-menu" id="menuButton" aria-label="Abrir menu" aria-expanded="false">
         <svg class="svg" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
-      <a href="#" class="brand">
+      <a href="index.php" class="brand">
         <span class="brand-mark"><svg class="svg" viewBox="0 0 24 24"><path d="M20 4C12 4 5 8 5 15c0 2 1 4 3 5 1-5 4-8 9-11-4 4-6 7-7 11 6 0 10-4 10-16Z"/></svg></span>
         <span>Cantinho</span>
       </a>
@@ -26,18 +48,46 @@
         <svg class="svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
         <input class="search-input" type="search" placeholder="O que procura?" aria-label="Pesquisar produtos">
       </label>
-      <a class="icon-button account-button" href="conta/conta.html" aria-label="A minha conta">
-        <svg class="svg" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-      </a>
-      <button class="icon-button cart-button" aria-label="Carrinho com 2 artigos">
+
+      <?php if ($logado): ?>
+        <details class="user-menu account-button" id="userMenu">
+          <summary class="icon-button" aria-label="Menu da conta de <?= e($nomeUtilizador) ?>">
+            <span class="avatar"><?= e($inicial) ?></span>
+          </summary>
+          <div class="user-menu-panel">
+            <div class="user-menu-head">
+              Olá, <strong><?= e($primeiroNome) ?></strong>
+            </div>
+            <a href="conta/perfil.php">O meu perfil</a>
+            <a href="conta/perfil.php#moradas">As minhas moradas</a>
+            <?php if ($tipoUtilizador === 'admin'): ?>
+              <a href="admin/index.php">Administração</a>
+            <?php endif; ?>
+            <a href="conta/logout.php" class="logout-link">Terminar sessão</a>
+          </div>
+        </details>
+      <?php else: ?>
+        <a class="icon-button account-button" href="conta/conta.php" aria-label="Iniciar sessão">
+          <svg class="svg" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        </a>
+      <?php endif; ?>
+
+      <button class="icon-button cart-button" aria-label="Carrinho com <?= $totalCarrinho ?> artigos">
         <svg class="svg" viewBox="0 0 24 24"><path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
-        <span class="cart-count" id="cartCount">69</span>
+        <span class="cart-count" id="cartCount"><?= $totalCarrinho ?></span>
       </button>
     </div>
     <nav class="mobile-nav" id="mobileNav">
       <a href="#ofertas">Ofertas</a>
       <a href="#categorias">Categorias</a>
       <a href="#sobre">Quem somos</a>
+      <?php if ($logado): ?>
+        <a href="conta/perfil.php">O meu perfil (<?= e($primeiroNome) ?>)</a>
+        <a href="conta/logout.php">Terminar sessão</a>
+      <?php else: ?>
+        <a href="conta/conta.php">Iniciar sessão</a>
+        <a href="conta/criar-conta.php">Criar conta</a>
+      <?php endif; ?>
     </nav>
     <label class="search mobile-search">
       <svg class="svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
@@ -49,7 +99,7 @@
     <section class="hero">
       <div class="hero-copy">
         <span class="eyebrow">Do produtor à sua mesa</span>
-        <h1>Frescura que cabe no seu dia a dia.</h1>
+        <h1><?= $logado ? 'Olá, ' . e($primeiroNome) . '. ' : '' ?>Frescura que cabe no seu dia a dia.</h1>
         <p>Produtos escolhidos diariamente, preços justos e entregas à hora que mais lhe convém.</p>
         <a href="#categorias" class="primary-link">Encomendar agora
           <svg class="svg" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
@@ -123,5 +173,12 @@
   </footer>
 
   <script src="javascript.js"></script>
+  <script>
+    // Fecha o menu da conta ao clicar fora
+    document.addEventListener('click', function (ev) {
+      var menu = document.getElementById('userMenu');
+      if (menu && menu.open && !menu.contains(ev.target)) menu.open = false;
+    });
+  </script>
 </body>
 </html>

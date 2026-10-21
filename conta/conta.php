@@ -3,7 +3,7 @@ require __DIR__ . '/ligacao.php';
 
 // Já está autenticado
 if (!empty($_SESSION['utilizador_id'])) {
-    header('Location: ../index.html');
+    header('Location: ../index.php');
     exit;
 }
 
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare('UPDATE Utilizador SET UltimoLogin = NOW() WHERE IDUtilizador = ?')
                 ->execute([$u['IDUtilizador']]);
 
-            header('Location: ../index.html');
+            header('Location: ../index.php');
             exit;
         }
     }
@@ -65,13 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
   <header class="account-header">
-    <a class="brand" href="../index.html" aria-label="Cantinho - página inicial">
+    <a class="brand" href="../index.php" aria-label="Cantinho - página inicial">
       <span class="brand-mark" aria-hidden="true">
         <svg class="svg" viewBox="0 0 24 24"><path d="M20 4C12 4 5 8 5 15c0 2 1 4 3 5 1-5 4-8 9-11-4 4-6 7-7 11 6 0 10-4 10-16Z"/></svg>
       </span>
       <span>Cantinho</span>
     </a>
-    <a class="back-link" href="../index.html">Voltar à loja</a>
+    <a class="back-link" href="../index.php">Voltar à loja</a>
   </header>
 
   <main class="account-main">
