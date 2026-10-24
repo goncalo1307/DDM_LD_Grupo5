@@ -1,5 +1,35 @@
 <?php
 
+function produto_galeria_preparar(PDO $pdo): void {
+    static $preparada = false;
+    if ($preparada) {
+        return;
+    }
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS ProdutoImagem (
+            IDProdutoImagem INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            IDProduto INT NOT NULL,
+            Caminho VARCHAR(500) NOT NULL,
+            Ordem TINYINT UNSIGNED NOT NULL DEFAULT 0,
+            INDEX idx_produto_imagem_ordem (IDProduto, Ordem, IDProdutoImagem)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+    );
+    $preparada = true;
+}
+
+function produto_galeria_listar(PDO $pdo, int $idProduto): array {
+    produto_galeria_preparar($pdo);
+    $stmt = $pdo->prepare(
+        'SELECT IDProdutoImagem, Caminho, Ordem
+         FROM ProdutoImagem
+         WHERE IDProduto = ?
+         ORDER BY Ordem, IDProdutoImagem'
+    );
+    $stmt->execute([$idProduto]);
+    return $stmt->fetchAll();
+}
+
 function produto_imagens(string $nome): array {
     $nomeNormalizado = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $nome);
     $nomeNormalizado = strtolower(preg_replace('/[^a-zA-Z0-9]+/', ' ', $nomeNormalizado ?: $nome));

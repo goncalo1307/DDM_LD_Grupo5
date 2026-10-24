@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/ligacao.php';
+require __DIR__ . '/../produto_imagens.php';
 
 if (empty($_SESSION['utilizador_id'])) {
     header('Location: conta.php?motivo=carrinho');
@@ -244,11 +245,15 @@ $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
             <?php
               $disponivel = (int) $item['Ativo'] === 1 && (int) $item['StockQuantidade'] > 0;
               $quantidadeValida = (int) $item['Quantidade'] <= min(99, (int) $item['StockQuantidade']);
+              $imagemCarrinho = (string) ($item['Imagem'] ?? '') ?: produto_imagens((string) $item['Nome'])['principal'];
+              if ($imagemCarrinho !== '' && !preg_match('~^(?:[a-z][a-z0-9+.-]*:|/)~i', $imagemCarrinho)) {
+                $imagemCarrinho = '../' . $imagemCarrinho;
+              }
             ?>
             <article class="cart-item">
               <a class="cart-item-image" href="../produto.php?id=<?= (int) $item['IDProduto'] ?>">
-                <?php if (!empty($item['Imagem'])): ?>
-                  <img src="<?= e((string) $item['Imagem']) ?>" alt="<?= e((string) $item['Nome']) ?>">
+                <?php if ($imagemCarrinho !== ''): ?>
+                  <img src="<?= e($imagemCarrinho) ?>" alt="<?= e((string) $item['Nome']) ?>">
                 <?php else: ?>
                   <span>Imagem indisponível</span>
                 <?php endif; ?>

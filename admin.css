@@ -492,6 +492,99 @@ body.admin-page {
   color: var(--admin-danger);
 }
 
+.admin-image-manager {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--admin-line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.admin-image-manager h4,
+.admin-image-manager p {
+  margin: 0;
+}
+
+.admin-image-manager h4 {
+  font-size: 14px;
+}
+
+.admin-image-manager > p,
+.admin-image-note {
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+
+.admin-image-manager > label:not(.admin-image-preview) {
+  display: grid;
+  gap: 7px;
+  color: #314c3e;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.admin-image-manager input[type="file"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px dashed #cbd8ce;
+  border-radius: 9px;
+  background: #f8faf8;
+  color: var(--admin-ink-soft);
+  font-size: 12px;
+}
+
+.admin-image-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-image-preview {
+  display: grid;
+  width: 132px;
+  gap: 8px;
+  align-content: start;
+  color: var(--admin-muted);
+  font-size: 11px;
+}
+
+.admin-image-preview img {
+  width: 132px;
+  height: 100px;
+  border: 1px solid var(--admin-line);
+  border-radius: 9px;
+  background: #fff;
+  object-fit: cover;
+}
+
+.admin-image-preview .admin-checkbox,
+.admin-image-preview .admin-checkbox span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--admin-danger);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-danger-button {
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid #f1d1ca;
+  border-radius: 8px;
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.admin-danger-button:hover {
+  border-color: #e7b7ac;
+  background: #ffe7e1;
+}
+
 .admin-product-actions {
   display: flex;
   align-items: center;

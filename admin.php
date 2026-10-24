@@ -36,6 +36,8 @@ if (!$utilizador || !(int) $utilizador['Ativo'] || $utilizador['Tipo'] !== 'admi
 
 $erro = '';
 $mensagem = '';
+$ficheirosUploadCriados = [];
+$ficheirosRemoverAposCommit = [];
 $produtoVazio = [
     'IDProduto' => '',
     'SKU' => '',
@@ -96,9 +98,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stockQuantidade = trim($_POST['stockQuantidade'] ?? '');
                 $stockMinimo = trim($_POST['stockMinimo'] ?? '');
                 $alergenios = trim($_POST['alergenios'] ?? '');
-                $imagem = trim($_POST['imagem'] ?? '');
+                $imagem = trim($_POST['imagem_card_atual'] ?? '');
+                $imagemCardAntiga = $imagem;
                 $destaque = isset($_POST['destaque']) ? 1 : 0;
                 $ativo = isset($_POST['ativo']) ? 1 : 0;
+                $uploadImagemCard = admin_uploads('imagem_card', 1);
+                $uploadsDestaque = admin_uploads('imagens_destaque', 3);
+                $idsImagensRemover = admin_ids_post('remover_imagens');
 
                 if ($sku === '' || mb_strlen($sku) > 40) {
                     throw new InvalidArgumentException('Indique um SKU com até 40 caracteres.');
@@ -119,10 +125,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new InvalidArgumentException('O stock atual e mínimo devem ser números inteiros não negativos.');
                 }
                 if ($imagem !== '' && !filter_var($imagem, FILTER_VALIDATE_URL) && !admin_imagem_local_valida($imagem)) {
-                    throw new InvalidArgumentException('Selecione uma imagem disponível ou indique um URL válido.');
+                    throw new InvalidArgumentException('A imagem atual do cartão não é válida.');
                 }
                 if (mb_strlen($marca) > 80 || mb_strlen($unidade) > 20 || mb_strlen($alergenios) > 255) {
                     throw new InvalidArgumentException('Verifique o tamanho dos campos Marca, Unidade e Alergénios.');
+                }
+
+                $galeriaAtual = $idProduto > 0 ? produto_galeria_listar($pdo, $idProduto) : [];
+                produto_galeria_preparar($pdo);
+                $galeriaRestante = array_values(array_filter(
+                    $galeriaAtual,
+                    static function (array $imagemGaleria) use ($idsImagensRemover): bool {
+                        return !in_array((int) $imagemGaleria['IDProdutoImagem'], $idsImagensRemover, true);
+                    }
+                ));
+                if (count($galeriaRestante) + count($uploadsDestaque) > 3) {
+                    throw new InvalidArgumentException('A galeria aceita no máximo 3 imagens. Remova uma imagem ou selecione menos ficheiros.');
                 }
 
                 $stmt = $pdo->prepare('SELECT COUNT(*) FROM Categoria WHERE IDCategoria = ?');
@@ -161,6 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $ativo,
                 ];
 
+                $pdo->beginTransaction();
                 if ($idProduto > 0) {
                     $stmt = $pdo->prepare('SELECT COUNT(*) FROM Produto WHERE IDProduto = ?');
                     $stmt->execute([$idProduto]);
@@ -187,8 +206,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                              Ativo, IDCriadoPor, IDAlteradoPor)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                     )->execute($valores);
+                    $idProduto = (int) $pdo->lastInsertId();
                 }
 
+                foreach ($galeriaAtual as $imagemGaleria) {
+                    $idImagemGaleria = (int) $imagemGaleria['IDProdutoImagem'];
+                    if (in_array($idImagemGaleria, $idsImagensRemover, true)) {
+                        $ficheirosRemoverAposCommit[] = (string) $imagemGaleria['Caminho'];
+                        $pdo->prepare('DELETE FROM ProdutoImagem WHERE IDProdutoImagem = ? AND IDProduto = ?')
+                            ->execute([$idImagemGaleria, $idProduto]);
+                    }
+                }
+
+                if ($uploadImagemCard) {
+                    $imagem = admin_guardar_upload($uploadImagemCard[0], $idProduto, 'cartao', $ficheirosUploadCriados);
+                    $pdo->prepare('UPDATE Produto SET Imagem = ? WHERE IDProduto = ?')->execute([$imagem, $idProduto]);
+                }
+
+                $ordemImagem = 0;
+                foreach ($galeriaRestante as $imagemGaleria) {
+                    $pdo->prepare('UPDATE ProdutoImagem SET Ordem = ? WHERE IDProdutoImagem = ?')
+                        ->execute([$ordemImagem++, (int) $imagemGaleria['IDProdutoImagem']]);
+                }
+                foreach ($uploadsDestaque as $uploadDestaque) {
+                    $caminhoGaleria = admin_guardar_upload($uploadDestaque, $idProduto, 'destaque', $ficheirosUploadCriados);
+                    $pdo->prepare('INSERT INTO ProdutoImagem (IDProduto, Caminho, Ordem) VALUES (?, ?, ?)')
+                        ->execute([$idProduto, $caminhoGaleria, $ordemImagem++]);
+                }
+
+                $pdo->commit();
+                if ($imagemCardAntiga !== '' && $imagemCardAntiga !== $imagem) {
+                    admin_apagar_imagem_upload($imagemCardAntiga, $idProduto);
+                }
+                foreach ($ficheirosRemoverAposCommit as $caminhoAntigo) {
+                    admin_apagar_imagem_upload($caminhoAntigo, $idProduto);
+                }
                 header('Location: admin.php?ok=produto');
                 exit;
             }
@@ -272,10 +324,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
+            if ($acao === 'eliminar_categoria') {
+                $idCategoria = filter_input(INPUT_POST, 'idCategoria', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+                if (!$idCategoria) {
+                    throw new InvalidArgumentException('Categoria inválida.');
+                }
+
+                $stmt = $pdo->prepare('SELECT Nome FROM Categoria WHERE IDCategoria = ?');
+                $stmt->execute([$idCategoria]);
+                $nomeCategoria = $stmt->fetchColumn();
+                if ($nomeCategoria === false) {
+                    throw new InvalidArgumentException('A categoria já não existe.');
+                }
+                $stmt = $pdo->prepare('SELECT COUNT(*) FROM Produto WHERE IDCategoria = ?');
+                $stmt->execute([$idCategoria]);
+                if ((int) $stmt->fetchColumn() > 0) {
+                    throw new InvalidArgumentException('Não é possível eliminar esta categoria enquanto tiver produtos associados. Edite primeiro esses produtos.');
+                }
+                $stmt = $pdo->prepare('SELECT COUNT(*) FROM Categoria WHERE IDCategoriaPai = ?');
+                $stmt->execute([$idCategoria]);
+                if ((int) $stmt->fetchColumn() > 0) {
+                    throw new InvalidArgumentException('Não é possível eliminar esta categoria enquanto tiver subcategorias.');
+                }
+
+                $pdo->prepare('DELETE FROM Categoria WHERE IDCategoria = ?')->execute([$idCategoria]);
+                header('Location: admin.php?ok=categoria_eliminada');
+                exit;
+            }
+
             throw new InvalidArgumentException('Ação de administração inválida.');
         } catch (InvalidArgumentException $ex) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            admin_limpar_uploads($ficheirosUploadCriados);
             $erro = $ex->getMessage();
         } catch (PDOException $ex) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            admin_limpar_uploads($ficheirosUploadCriados);
             $erro = 'Não foi possível guardar a alteração. Verifique os dados e as relações da base de dados.';
         }
     }
@@ -284,6 +372,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $mensagens = [
     'produto' => 'Produto guardado com sucesso.',
     'categoria' => 'Categoria guardada com sucesso.',
+    'categoria_eliminada' => 'Categoria eliminada com sucesso.',
     'desativado' => 'Produto desativado.',
 ];
 $mensagem = $mensagens[$_GET['ok'] ?? ''] ?? '';
@@ -334,7 +423,7 @@ if ($erro !== '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             'StockQuantidade' => admin_post_campo('stockQuantidade'),
             'StockMinimo' => admin_post_campo('stockMinimo'),
             'Alergenios' => admin_post_campo('alergenios'),
-            'Imagem' => admin_post_campo('imagem'),
+            'Imagem' => admin_post_campo('imagem_card_atual'),
             'Destaque' => isset($_POST['destaque']) ? '1' : '0',
             'Ativo' => isset($_POST['ativo']) ? '1' : '0',
         ]);
@@ -376,6 +465,112 @@ function admin_imagem_local_valida(string $imagem): bool {
         && strpos($caminhoImagem, $raizImagens . DIRECTORY_SEPARATOR) === 0
         && in_array($extensao, ['jpg', 'jpeg', 'png', 'webp'], true)
         && is_file($caminhoImagem);
+}
+
+function admin_ids_post(string $campo): array {
+    $ids = $_POST[$campo] ?? [];
+    if (!is_array($ids)) {
+        throw new InvalidArgumentException('Seleção de imagens inválida.');
+    }
+    $resultado = [];
+    foreach ($ids as $id) {
+        if (!is_string($id) || !ctype_digit($id) || (int) $id < 1) {
+            throw new InvalidArgumentException('Seleção de imagens inválida.');
+        }
+        $resultado[] = (int) $id;
+    }
+    return array_values(array_unique($resultado));
+}
+
+function admin_uploads(string $campo, int $limite): array {
+    if (!isset($_FILES[$campo])) {
+        return [];
+    }
+    $ficheiros = $_FILES[$campo];
+    if (!is_array($ficheiros) || !isset($ficheiros['error'])) {
+        throw new InvalidArgumentException('O envio de imagens não é válido.');
+    }
+
+    $normalizados = [];
+    if (is_array($ficheiros['error'])) {
+        foreach ($ficheiros['error'] as $indice => $erroUpload) {
+            $normalizados[] = [
+                'name' => $ficheiros['name'][$indice] ?? '',
+                'tmp_name' => $ficheiros['tmp_name'][$indice] ?? '',
+                'size' => $ficheiros['size'][$indice] ?? 0,
+                'error' => $erroUpload,
+            ];
+        }
+    } else {
+        $normalizados[] = $ficheiros;
+    }
+
+    $uploads = [];
+    foreach ($normalizados as $ficheiro) {
+        $erroUpload = (int) $ficheiro['error'];
+        if ($erroUpload === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
+        if ($erroUpload !== UPLOAD_ERR_OK) {
+            throw new InvalidArgumentException('Não foi possível enviar uma das imagens. Verifique o tamanho e tente novamente.');
+        }
+        if (count($uploads) >= $limite) {
+            throw new InvalidArgumentException('Selecione no máximo ' . $limite . ' ficheiro(s) de imagem.');
+        }
+        if ((int) $ficheiro['size'] > 5 * 1024 * 1024 || !is_uploaded_file((string) $ficheiro['tmp_name'])) {
+            throw new InvalidArgumentException('Cada imagem deve ter no máximo 5 MB.');
+        }
+        $informacaoImagem = @getimagesize((string) $ficheiro['tmp_name']);
+        $tipoMime = $informacaoImagem['mime'] ?? '';
+        $extensoesPermitidas = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+        ];
+        if (!isset($extensoesPermitidas[$tipoMime])) {
+            throw new InvalidArgumentException('Use imagens JPG, PNG ou WebP.');
+        }
+        $uploads[] = ['tmp_name' => (string) $ficheiro['tmp_name'], 'extension' => $extensoesPermitidas[$tipoMime]];
+    }
+    return $uploads;
+}
+
+function admin_guardar_upload(array $upload, int $idProduto, string $tipo, array &$ficheirosCriados): string {
+    $pasta = __DIR__ . DIRECTORY_SEPARATOR . 'imagens' . DIRECTORY_SEPARATOR . 'produtos'
+        . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'produto-' . $idProduto;
+    if (!is_dir($pasta) && !mkdir($pasta, 0755, true) && !is_dir($pasta)) {
+        throw new InvalidArgumentException('Não foi possível criar a pasta de imagens do produto.');
+    }
+    $nomeFicheiro = $tipo . '-' . bin2hex(random_bytes(12)) . '.' . $upload['extension'];
+    $caminhoCompleto = $pasta . DIRECTORY_SEPARATOR . $nomeFicheiro;
+    if (!move_uploaded_file($upload['tmp_name'], $caminhoCompleto)) {
+        throw new InvalidArgumentException('Não foi possível guardar uma das imagens enviadas.');
+    }
+    $ficheirosCriados[] = $caminhoCompleto;
+    return 'imagens/produtos/uploads/produto-' . $idProduto . '/' . rawurlencode($nomeFicheiro);
+}
+
+function admin_apagar_imagem_upload(string $caminho, int $idProduto): void {
+    $prefixoEsperado = 'imagens/produtos/uploads/produto-' . $idProduto . '/';
+    if (strpos($caminho, $prefixoEsperado) !== 0) {
+        return;
+    }
+    $caminhoReal = realpath(__DIR__ . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, rawurldecode($caminho)));
+    $pastaReal = realpath(__DIR__ . DIRECTORY_SEPARATOR . 'imagens' . DIRECTORY_SEPARATOR . 'produtos'
+        . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'produto-' . $idProduto);
+    if ($caminhoReal !== false && $pastaReal !== false && strpos($caminhoReal, $pastaReal . DIRECTORY_SEPARATOR) === 0) {
+        if (is_file($caminhoReal) && !unlink($caminhoReal)) {
+            error_log('Não foi possível remover imagem de produto: ' . $caminhoReal);
+        }
+    }
+}
+
+function admin_limpar_uploads(array $ficheiros): void {
+    foreach ($ficheiros as $ficheiro) {
+        if (is_file($ficheiro) && !unlink($ficheiro)) {
+            error_log('Não foi possível limpar upload temporário de produto: ' . $ficheiro);
+        }
+    }
 }
 
 function admin_csrf(): string {
@@ -433,11 +628,13 @@ function admin_csrf(): string {
       </div>
 
       <?php if ($mostrarFormularioProduto): ?>
-      <form class="admin-form admin-form-featured" id="form-produto" method="post" action="admin.php#form-produto">
+      <form class="admin-form admin-form-featured" id="form-produto" method="post" enctype="multipart/form-data" action="admin.php#form-produto">
         <?php
           $imagensProduto = produto_imagens((string) ($produtoEdicao['Nome'] ?? ''));
-          $imagemGuardada = (string) ($produtoEdicao['Imagem'] ?? '');
-          $imagemSelecionada = $imagemGuardada !== '' ? $imagemGuardada : $imagensProduto['principal'];
+          $imagemCardAtual = (string) ($produtoEdicao['Imagem'] ?? '') ?: $imagensProduto['principal'];
+          $galeriaGuardada = !empty($produtoEdicao['IDProduto'])
+              ? produto_galeria_listar($pdo, (int) $produtoEdicao['IDProduto'])
+              : [];
         ?>
         <?= admin_csrf() ?>
         <input type="hidden" name="acao" value="guardar_produto">
@@ -498,25 +695,65 @@ function admin_csrf(): string {
           <label>Stock mínimo *
             <input name="stockMinimo" type="number" min="0" step="1" value="<?= admin_campo($produtoEdicao, 'StockMinimo') ?>" required>
           </label>
-          <?php if ($imagensProduto['galeria']): ?>
-            <label class="admin-field-wide">Imagem principal
-              <select name="imagem">
-                <option value="" <?= $imagemSelecionada === '' ? 'selected' : '' ?>>Sem imagem</option>
-                <?php if ($imagemGuardada !== '' && !in_array($imagemGuardada, $imagensProduto['galeria'], true)): ?>
-                  <option value="<?= e($imagemGuardada) ?>" selected>Manter imagem atual</option>
+          <div class="admin-image-manager admin-field-wide">
+            <h4>Imagem do cartão</h4>
+            <p>Esta imagem aparece no cartão do produto e no carrinho.</p>
+            <label>Escolher uma imagem existente
+              <select name="imagem_card_atual">
+                <option value="">Usar imagem automática do produto</option>
+                <?php if ($imagemCardAtual !== '' && !in_array($imagemCardAtual, $imagensProduto['galeria'], true)): ?>
+                  <option value="<?= e($imagemCardAtual) ?>" selected>Manter imagem atual</option>
                 <?php endif; ?>
-                <?php foreach ($imagensProduto['galeria'] as $indiceImagem => $imagemOpcao): ?>
-                  <option value="<?= e($imagemOpcao) ?>" <?= $imagemSelecionada === $imagemOpcao ? 'selected' : '' ?>>
-                    <?= strpos(strtolower(basename(rawurldecode($imagemOpcao))), '-catalago.') !== false ? 'Imagem de catálogo' : 'Imagem alternativa ' . ($indiceImagem + 1) ?>
+                <?php foreach ($imagensProduto['galeria'] as $imagemOpcao): ?>
+                  <option value="<?= e($imagemOpcao) ?>" <?= $imagemCardAtual === $imagemOpcao ? 'selected' : '' ?>>
+                    <?= strpos(strtolower(basename(rawurldecode($imagemOpcao))), '-catalago.') !== false ? 'Imagem de catálogo' : 'Imagem alternativa' ?>
                   </option>
+                <?php endforeach; ?>
+                <?php foreach ($galeriaGuardada as $imagemGaleria): ?>
+                  <?php if (!in_array((string) $imagemGaleria['Caminho'], $imagensProduto['galeria'], true)): ?>
+                    <option value="<?= e((string) $imagemGaleria['Caminho']) ?>" <?= $imagemCardAtual === $imagemGaleria['Caminho'] ? 'selected' : '' ?>>Imagem de destaque guardada</option>
+                  <?php endif; ?>
                 <?php endforeach; ?>
               </select>
             </label>
-          <?php else: ?>
-            <label>Imagem
-              <input name="imagem" type="text" maxlength="255" value="<?= admin_campo($produtoEdicao, 'Imagem') ?>" placeholder="URL ou caminho da imagem">
+            <div class="admin-image-preview" id="imagem-card-preview" <?= $imagemCardAtual === '' ? 'hidden' : '' ?>>
+              <img src="<?= e($imagemCardAtual) ?>" alt="Pré-visualização da imagem do cartão">
+            </div>
+            <label>Enviar uma imagem para o cartão (JPG, PNG ou WebP; máximo 5 MB)
+              <input name="imagem_card" type="file" accept="image/jpeg,image/png,image/webp">
             </label>
-          <?php endif; ?>
+          </div>
+          <div class="admin-image-manager admin-field-wide">
+            <h4>Imagens de destaque</h4>
+            <p>Até 3 imagens para a galeria na página do produto. As imagens atuais são mantidas, exceto as que marcar para remover.</p>
+            <?php if ($galeriaGuardada): ?>
+              <div class="admin-image-gallery">
+                <?php foreach ($galeriaGuardada as $imagemGaleria): ?>
+                  <label class="admin-image-preview">
+                    <img src="<?= e((string) $imagemGaleria['Caminho']) ?>" alt="Imagem de destaque">
+                    <span class="admin-checkbox">
+                      <input name="remover_imagens[]" type="checkbox" value="<?= (int) $imagemGaleria['IDProdutoImagem'] ?>">
+                      Remover imagem
+                    </span>
+                  </label>
+                <?php endforeach; ?>
+              </div>
+            <?php elseif ($imagensProduto['galeria']): ?>
+              <div class="admin-image-gallery">
+                <?php foreach ($imagensProduto['galeria'] as $imagemAutomatica): ?>
+                  <div class="admin-image-preview">
+                    <img src="<?= e($imagemAutomatica) ?>" alt="Imagem de destaque automática">
+                    <span>Imagem automática</span>
+                  </div>
+                <?php endforeach; ?>
+              </div>
+              <p class="admin-image-note">Ao guardar imagens novas, estas substituem a galeria automática.</p>
+            <?php endif; ?>
+            <label>Adicionar imagens de destaque (pode selecionar até 3)
+              <input name="imagens_destaque[]" type="file" accept="image/jpeg,image/png,image/webp" multiple
+                     data-existing-count="<?= count($galeriaGuardada) ?>">
+            </label>
+          </div>
           <label class="admin-field-wide">Alergénios
             <input name="alergenios" maxlength="255" value="<?= admin_campo($produtoEdicao, 'Alergenios') ?>">
           </label>
@@ -645,7 +882,17 @@ function admin_csrf(): string {
                 <td><?= e($categoria['Nome']) ?></td>
                 <td><?= e($categoria['Slug'] ?? '') ?></td>
                 <td><span class="admin-status <?= (int) ($categoria['Ativo'] ?? 0) ? 'is-active' : 'is-inactive' ?>"><?= (int) ($categoria['Ativo'] ?? 0) ? 'Ativa' : 'Inativa' ?></span></td>
-                <td><a class="admin-secondary-button" href="admin.php?editar_categoria=<?= (int) $categoria['IDCategoria'] ?>#form-categoria">Editar</a></td>
+                <td>
+                  <div class="admin-row-actions">
+                    <a class="admin-secondary-button" href="admin.php?editar_categoria=<?= (int) $categoria['IDCategoria'] ?>#form-categoria">Editar</a>
+                    <form method="post" action="admin.php#categorias" onsubmit="return confirm('Eliminar a categoria <?= e($categoria['Nome']) ?>? Só é possível eliminar categorias sem produtos ou subcategorias.');">
+                      <?= admin_csrf() ?>
+                      <input type="hidden" name="acao" value="eliminar_categoria">
+                      <input type="hidden" name="idCategoria" value="<?= (int) $categoria['IDCategoria'] ?>">
+                      <button class="admin-danger-button" type="submit">Eliminar</button>
+                    </form>
+                  </div>
+                </td>
               </tr>
             <?php endforeach; ?>
             <?php if (!$categorias): ?>
@@ -656,5 +903,6 @@ function admin_csrf(): string {
       </div>
     </section>
   </main>
+  <script src="javascript.js"></script>
 </body>
 </html>

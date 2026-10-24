@@ -96,3 +96,37 @@ if (productMainImage) {
     });
   });
 }
+
+const cardImageSelect = document.querySelector('select[name="imagem_card_atual"]');
+const cardImagePreview = document.getElementById("imagem-card-preview");
+if (cardImageSelect && cardImagePreview) {
+  cardImageSelect.addEventListener("change", () => {
+    const selectedImage = cardImageSelect.value;
+    cardImagePreview.hidden = !selectedImage;
+    if (selectedImage) {
+      cardImagePreview.querySelector("img").src = selectedImage;
+    }
+  });
+}
+
+const galleryUpload = document.querySelector('input[name="imagens_destaque[]"]');
+if (galleryUpload) {
+  const galleryForm = galleryUpload.form;
+  const updateGalleryLimit = () => {
+    const removedImages = galleryForm.querySelectorAll('input[name="remover_imagens[]"]:checked').length;
+    const currentImages = Number(galleryUpload.dataset.existingCount);
+    const availableSlots = Math.max(0, 3 - currentImages + removedImages);
+    const tooManyFiles = galleryUpload.files.length > availableSlots;
+    galleryUpload.setCustomValidity(
+      tooManyFiles
+        ? `Pode adicionar no máximo ${availableSlots} imagem(ns) sem ultrapassar o limite de 3.`
+        : ""
+    );
+  };
+
+  galleryUpload.addEventListener("change", updateGalleryLimit);
+  galleryForm.querySelectorAll('input[name="remover_imagens[]"]').forEach(input => {
+    input.addEventListener("change", updateGalleryLimit);
+  });
+  updateGalleryLimit();
+}

@@ -44,7 +44,10 @@ unset($_SESSION['feedback_carrinho']);
 
 $imagensProduto = $produto ? produto_imagens((string) $produto['Nome']) : ['principal' => '', 'galeria' => []];
 $imagemPrincipal = $produto && !empty($produto['Imagem']) ? (string) $produto['Imagem'] : $imagensProduto['principal'];
-$galeriaProduto = $imagensProduto['galeria'];
+$galeriaGuardada = $produto ? produto_galeria_listar($pdo, (int) $produto['IDProduto']) : [];
+$galeriaProduto = $galeriaGuardada
+    ? array_column($galeriaGuardada, 'Caminho')
+    : $imagensProduto['galeria'];
 if ($imagemPrincipal !== '' && !in_array($imagemPrincipal, $galeriaProduto, true)) {
     array_unshift($galeriaProduto, $imagemPrincipal);
 }
