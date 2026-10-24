@@ -49,3 +49,50 @@ if (menuButton && mobileNav) {
     });
   });
 }
+
+document.querySelectorAll(".quantity-control").forEach(control => {
+  const input = control.querySelector('input[name="quantidade"]');
+  const decreaseButton = control.querySelector('[data-quantity-step="-1"]');
+  const increaseButton = control.querySelector('[data-quantity-step="1"]');
+
+  if (!input || !decreaseButton || !increaseButton) return;
+
+  const updateButtons = () => {
+    const quantity = Number.parseInt(input.value, 10);
+    decreaseButton.disabled = quantity <= Number(input.min);
+    increaseButton.disabled = quantity >= Number(input.max);
+  };
+
+  control.addEventListener("click", event => {
+    const button = event.target.closest("[data-quantity-step]");
+    if (!button) return;
+
+    const minimum = Number(input.min);
+    const maximum = Number(input.max);
+    const current = Number.parseInt(input.value, 10);
+    const quantity = Number.isNaN(current) ? minimum : current;
+    const step = Number(button.dataset.quantityStep);
+
+    input.value = String(Math.min(maximum, Math.max(minimum, quantity + step)));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    updateButtons();
+  });
+
+  input.addEventListener("input", updateButtons);
+  updateButtons();
+});
+
+const productMainImage = document.getElementById("productMainImage");
+if (productMainImage) {
+  document.querySelectorAll(".product-gallery-thumb").forEach(button => {
+    button.addEventListener("click", () => {
+      const imageSource = button.dataset.gallerySrc;
+      if (!imageSource) return;
+
+      productMainImage.src = imageSource;
+      document.querySelectorAll(".product-gallery-thumb").forEach(thumbnail => {
+        thumbnail.setAttribute("aria-pressed", String(thumbnail === button));
+      });
+    });
+  });
+}

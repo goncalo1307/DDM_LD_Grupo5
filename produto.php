@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/conta/ligacao.php';
+require __DIR__ . '/produto_imagens.php';
 
 $idProduto = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 $produto = null;
@@ -36,6 +37,19 @@ if ($logado) {
     );
     $stmt->execute([(int) $_SESSION['utilizador_id']]);
     $totalCarrinho = (int) $stmt->fetchColumn();
+}
+
+$feedbackCarrinho = $_SESSION['feedback_carrinho'] ?? null;
+unset($_SESSION['feedback_carrinho']);
+
+$imagensProduto = $produto ? produto_imagens((string) $produto['Nome']) : ['principal' => '', 'galeria' => []];
+$imagemPrincipal = $produto && !empty($produto['Imagem']) ? (string) $produto['Imagem'] : $imagensProduto['principal'];
+$galeriaProduto = $imagensProduto['galeria'];
+if ($imagemPrincipal !== '' && !in_array($imagemPrincipal, $galeriaProduto, true)) {
+    array_unshift($galeriaProduto, $imagemPrincipal);
+}
+if ($imagemPrincipal !== '' && in_array($imagemPrincipal, $galeriaProduto, true)) {
+    $galeriaProduto = array_values(array_unique(array_merge([$imagemPrincipal], $galeriaProduto)));
 }
 
 $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produto não encontrado | Cantinho Mercado';
@@ -117,6 +131,14 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
     </form>
   </header>
 
+  <?php if (is_array($feedbackCarrinho) && isset($feedbackCarrinho['mensagem'], $feedbackCarrinho['tipo'])): ?>
+    <div class="cart-feedback <?= $feedbackCarrinho['tipo'] === 'ok' ? 'cart-feedback-ok' : 'cart-feedback-error' ?>"
+         id="cartFeedback"
+         role="<?= $feedbackCarrinho['tipo'] === 'ok' ? 'status' : 'alert' ?>">
+      <?= e((string) $feedbackCarrinho['mensagem']) ?>
+    </div>
+  <?php endif; ?>
+
   <main class="product-detail-main">
     <?php if ($produto): ?>
       <?php
@@ -136,14 +158,28 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
       </nav>
 
       <section class="product-detail">
-        <div class="detail-image">
-          <?php if (!empty($produto['Imagem'])): ?>
-            <img src="<?= e((string) $produto['Imagem']) ?>" alt="<?= e((string) $produto['Nome']) ?>">
-          <?php else: ?>
-            <span class="image-placeholder">Imagem indisponível</span>
-          <?php endif; ?>
-          <?php if (!empty($produto['Destaque'])): ?>
-            <span class="tag">Destaque</span>
+        <div class="detail-media">
+          <div class="detail-image">
+            <?php if ($imagemPrincipal !== ''): ?>
+              <img id="productMainImage" src="<?= e($imagemPrincipal) ?>" alt="<?= e((string) $produto['Nome']) ?>">
+            <?php else: ?>
+              <span class="image-placeholder">Imagem indisponível</span>
+            <?php endif; ?>
+            <?php if (!empty($produto['Destaque'])): ?>
+              <span class="tag">Destaque</span>
+            <?php endif; ?>
+          </div>
+          <?php if (count($galeriaProduto) > 1): ?>
+            <div class="product-gallery" aria-label="Outras imagens de <?= e((string) $produto['Nome']) ?>">
+              <?php foreach ($galeriaProduto as $indiceImagem => $imagemGaleria): ?>
+                <button class="product-gallery-thumb" type="button"
+                        data-gallery-src="<?= e($imagemGaleria) ?>"
+                        aria-label="Ver imagem <?= $indiceImagem + 1 ?> de <?= e((string) $produto['Nome']) ?>"
+                        aria-pressed="<?= $imagemGaleria === $imagemPrincipal ? 'true' : 'false' ?>">
+                  <img src="<?= e($imagemGaleria) ?>" alt="">
+                </button>
+              <?php endforeach; ?>
+            </div>
           <?php endif; ?>
         </div>
 
@@ -178,6 +214,7 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
           <form class="detail-cart-form" method="post" action="conta/carrinho.php">
             <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
             <input type="hidden" name="acao" value="adicionar">
+            <input type="hidden" name="origem" value="produto">
             <input type="hidden" name="id_produto" value="<?= (int) $produto['IDProduto'] ?>">
             <label for="quantidade-produto">Quantidade</label>
             <input id="quantidade-produto" name="quantidade" type="number" min="1"
@@ -240,6 +277,11 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
   </footer>
 
   <script>
+    const cartFeedback = document.getElementById('cartFeedback');
+    if (cartFeedback) {
+      window.setTimeout(() => cartFeedback.remove(), 3000);
+    }
+
     document.addEventListener('click', event => {
       const userMenu = document.getElementById('userMenu');
       if (userMenu && userMenu.open && !userMenu.contains(event.target)) userMenu.open = false;

@@ -15,6 +15,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $erro = 'Pedido inválido. Atualize a página e tente novamente.';
     } else {
         $acao = $_POST['acao'] ?? '';
+        $origem = $_POST['origem'] ?? '';
+        $paginaOrigem = null;
+        if ($origem === 'loja') {
+            $paginaOrigem = '../index.php#categorias';
+        } elseif (
+            $origem === 'produto'
+            && isset($_POST['id_produto'])
+            && is_string($_POST['id_produto'])
+            && ctype_digit($_POST['id_produto'])
+            && (int) $_POST['id_produto'] > 0
+        ) {
+            $paginaOrigem = '../produto.php?id=' . (int) $_POST['id_produto'];
+        } elseif ($origem === 'pesquisa') {
+            $paginaOrigem = '../pesquisa.php';
+            if (isset($_POST['origem_query']) && is_string($_POST['origem_query']) && trim($_POST['origem_query']) !== '') {
+                $paginaOrigem .= '?q=' . rawurlencode(trim($_POST['origem_query']));
+            }
+        }
 
         $pdo->beginTransaction();
         $stmt = $pdo->prepare('SELECT IDUtilizador FROM Utilizador WHERE IDUtilizador = ? AND Ativo = 1 FOR UPDATE');
@@ -32,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($acao === 'adicionar') {
             $idProduto = filter_input(INPUT_POST, 'id_produto', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 99]]);
+            $quantidadeAdicionada = 0;
 
             if (!$idProduto || !$quantidade) {
                 $erro = 'Produto ou quantidade inválidos.';
@@ -61,9 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } elseif ($itemExistente) {
                         $pdo->prepare('UPDATE ItemCarrinho SET Quantidade = ? WHERE IDItemCarrinho = ? AND IDCarrinho = ?')
                             ->execute([$quantidadeFinal, $itemExistente['IDItemCarrinho'], $idCarrinho]);
+                        $quantidadeAdicionada = $quantidade;
                     } else {
                         $pdo->prepare('INSERT INTO ItemCarrinho (IDCarrinho, IDProduto, Quantidade, DataAdicionado) VALUES (?, ?, ?, NOW())')
                             ->execute([$idCarrinho, $idProduto, $quantidadeFinal]);
+                        $quantidadeAdicionada = $quantidade;
                     }
                 }
             }
@@ -114,12 +135,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ->execute([$idCarrinho, $idUtilizador]);
             }
             $pdo->commit();
+            if ($acao === 'adicionar' && $paginaOrigem !== null) {
+                $_SESSION['feedback_carrinho'] = [
+                    'tipo' => 'ok',
+                    'mensagem' => 'Foi inserido ' . $quantidadeAdicionada . ' '
+                        . ($quantidadeAdicionada === 1 ? 'produto' : 'produtos') . ' no seu carrinho.',
+                ];
+                header('Location: ' . $paginaOrigem);
+                exit;
+            }
             $mensagem = $acao === 'adicionar' ? 'adicionado' : ($acao === 'atualizar' ? 'atualizado' : 'removido');
             header('Location: carrinho.php?ok=' . $mensagem);
             exit;
         }
 
         $pdo->rollBack();
+        if ($acao === 'adicionar' && $paginaOrigem !== null) {
+            $_SESSION['feedback_carrinho'] = ['tipo' => 'erro', 'mensagem' => $erro];
+            header('Location: ' . $paginaOrigem);
+            exit;
+        }
     }
 }
 

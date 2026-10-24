@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/conta/ligacao.php';
+require __DIR__ . '/produto_imagens.php';
 
 if (empty($_SESSION['utilizador_id'])) {
     header('Location: conta/conta.php');
@@ -19,7 +20,7 @@ if (!$utilizador || !(int) $utilizador['Ativo'] || $utilizador['Tipo'] !== 'admi
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Acesso recusado | Cantinho</title>
-      <link rel="stylesheet" href="style.css">
+      <link rel="stylesheet" href="admin.css">
     </head>
     <body class="admin-page">
       <main class="admin-shell">
@@ -117,8 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!preg_match('/^\d+$/', $stockQuantidade) || !preg_match('/^\d+$/', $stockMinimo)) {
                     throw new InvalidArgumentException('O stock atual e mínimo devem ser números inteiros não negativos.');
                 }
-                if ($imagem !== '' && !filter_var($imagem, FILTER_VALIDATE_URL)) {
-                    throw new InvalidArgumentException('Indique um URL de imagem válido ou deixe o campo vazio.');
+                if ($imagem !== '' && !filter_var($imagem, FILTER_VALIDATE_URL) && !admin_imagem_local_valida($imagem)) {
+                    throw new InvalidArgumentException('Selecione uma imagem disponível ou indique um URL válido.');
                 }
                 if (mb_strlen($marca) > 80 || mb_strlen($unidade) > 20 || mb_strlen($alergenios) > 255) {
                     throw new InvalidArgumentException('Verifique o tamanho dos campos Marca, Unidade e Alergénios.');
@@ -287,10 +288,10 @@ $mensagens = [
 ];
 $mensagem = $mensagens[$_GET['ok'] ?? ''] ?? '';
 
-$categorias = $pdo->query('SELECT IDCategoria, IDCategoriaPai, Nome, Slug, Descricao, Ordem, Ativo FROM Categoria ORDER BY Ordem, Nome')->fetchAll();
+$categorias = $pdo->query('SELECT IDCategoria, IDCategoriaPai, Nome, Slug, Descricao, Ordem, Ativo FROM Categoria ORDER BY Nome')->fetchAll();
 $fornecedores = $pdo->query('SELECT IDFornecedor, Nome FROM Fornecedor ORDER BY Nome')->fetchAll();
 $produtos = $pdo->query(
-    'SELECT p.IDProduto, p.SKU, p.Nome, p.Preco, p.StockQuantidade, p.Ativo,
+    'SELECT p.IDProduto, p.SKU, p.Nome, p.Preco, p.StockQuantidade, p.Ativo, p.Imagem,
             c.Nome AS CategoriaNome
      FROM Produto p
      LEFT JOIN Categoria c ON c.IDCategoria = p.IDCategoria
@@ -299,21 +300,82 @@ $produtos = $pdo->query(
 )->fetchAll();
 
 $produtoEdicao = $produtoVazio;
+$mostrarFormularioProduto = isset($_GET['novo_produto']);
 if (isset($_GET['editar_produto']) && is_string($_GET['editar_produto']) && ctype_digit($_GET['editar_produto'])) {
     $stmt = $pdo->prepare('SELECT * FROM Produto WHERE IDProduto = ?');
     $stmt->execute([(int) $_GET['editar_produto']]);
     $produtoEdicao = $stmt->fetch() ?: $produtoVazio;
+    $mostrarFormularioProduto = (bool) $produtoEdicao['IDProduto'];
 }
 
 $categoriaEdicao = $categoriaVazia;
+$mostrarFormularioCategoria = isset($_GET['nova_categoria']);
 if (isset($_GET['editar_categoria']) && is_string($_GET['editar_categoria']) && ctype_digit($_GET['editar_categoria'])) {
     $stmt = $pdo->prepare('SELECT * FROM Categoria WHERE IDCategoria = ?');
     $stmt->execute([(int) $_GET['editar_categoria']]);
     $categoriaEdicao = $stmt->fetch() ?: $categoriaVazia;
+    $mostrarFormularioCategoria = (bool) $categoriaEdicao['IDCategoria'];
+}
+
+if ($erro !== '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (($_POST['acao'] ?? '') === 'guardar_produto') {
+        $produtoEdicao = array_merge($produtoVazio, [
+            'IDProduto' => admin_post_campo('idProduto'),
+            'SKU' => admin_post_campo('sku'),
+            'Nome' => admin_post_campo('nome'),
+            'Descricao' => admin_post_campo('descricao'),
+            'Marca' => admin_post_campo('marca'),
+            'IDCategoria' => admin_post_campo('idCategoria'),
+            'IDFornecedor' => admin_post_campo('idFornecedor'),
+            'Preco' => admin_post_campo('preco'),
+            'PrecoPromocional' => admin_post_campo('precoPromocional'),
+            'TaxaIVA' => admin_post_campo('taxaIva'),
+            'Unidade' => admin_post_campo('unidade'),
+            'StockQuantidade' => admin_post_campo('stockQuantidade'),
+            'StockMinimo' => admin_post_campo('stockMinimo'),
+            'Alergenios' => admin_post_campo('alergenios'),
+            'Imagem' => admin_post_campo('imagem'),
+            'Destaque' => isset($_POST['destaque']) ? '1' : '0',
+            'Ativo' => isset($_POST['ativo']) ? '1' : '0',
+        ]);
+        $mostrarFormularioProduto = true;
+    } elseif (($_POST['acao'] ?? '') === 'guardar_categoria') {
+        $categoriaEdicao = array_merge($categoriaVazia, [
+            'IDCategoria' => admin_post_campo('idCategoria'),
+            'IDCategoriaPai' => admin_post_campo('idCategoriaPai'),
+            'Nome' => admin_post_campo('nome'),
+            'Slug' => admin_post_campo('slug'),
+            'Descricao' => admin_post_campo('descricao'),
+            'Ordem' => admin_post_campo('ordem'),
+            'Ativo' => isset($_POST['ativo']) ? '1' : '0',
+        ]);
+        $mostrarFormularioCategoria = true;
+    }
 }
 
 function admin_campo(array $dados, string $campo): string {
     return e((string) ($dados[$campo] ?? ''));
+}
+
+function admin_post_campo(string $campo): string {
+    $valor = $_POST[$campo] ?? '';
+    return is_scalar($valor) ? (string) $valor : '';
+}
+
+function admin_imagem_local_valida(string $imagem): bool {
+    $caminhoRelativo = rawurldecode($imagem);
+    if (!preg_match('~^imagens[\\\\/]produtos[\\\\/]~i', $caminhoRelativo)) {
+        return false;
+    }
+
+    $raizImagens = realpath(__DIR__ . DIRECTORY_SEPARATOR . 'imagens' . DIRECTORY_SEPARATOR . 'produtos');
+    $caminhoImagem = realpath(__DIR__ . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $caminhoRelativo));
+    $extensao = strtolower(pathinfo($caminhoRelativo, PATHINFO_EXTENSION));
+    return $raizImagens !== false
+        && $caminhoImagem !== false
+        && strpos($caminhoImagem, $raizImagens . DIRECTORY_SEPARATOR) === 0
+        && in_array($extensao, ['jpg', 'jpeg', 'png', 'webp'], true)
+        && is_file($caminhoImagem);
 }
 
 function admin_csrf(): string {
@@ -326,7 +388,7 @@ function admin_csrf(): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Administração | Cantinho</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
 </head>
 <body class="admin-page">
   <header class="admin-topbar">
@@ -349,6 +411,11 @@ function admin_csrf(): string {
       </div>
     </div>
 
+    <nav class="admin-nav" aria-label="Secções de administração">
+      <a href="#produtos">Produtos <span><?= count($produtos) ?></span></a>
+      <a href="#categorias">Categorias <span><?= count($categorias) ?></span></a>
+    </nav>
+
     <?php if ($mensagem): ?>
       <div class="admin-alert admin-alert-ok" role="status"><?= e($mensagem) ?></div>
     <?php endif; ?>
@@ -360,15 +427,28 @@ function admin_csrf(): string {
       <div class="admin-section-heading">
         <div>
           <h2>Produtos</h2>
-          <p>Adicionar, editar ou desativar produtos.</p>
+          <p>Consulte o catálogo e edite cada produto individualmente.</p>
         </div>
+        <a class="admin-primary-button" href="admin.php?novo_produto=1#form-produto">+ Adicionar produto</a>
       </div>
 
-      <form class="admin-form" method="post" action="admin.php#produtos">
+      <?php if ($mostrarFormularioProduto): ?>
+      <form class="admin-form admin-form-featured" id="form-produto" method="post" action="admin.php#form-produto">
+        <?php
+          $imagensProduto = produto_imagens((string) ($produtoEdicao['Nome'] ?? ''));
+          $imagemGuardada = (string) ($produtoEdicao['Imagem'] ?? '');
+          $imagemSelecionada = $imagemGuardada !== '' ? $imagemGuardada : $imagensProduto['principal'];
+        ?>
         <?= admin_csrf() ?>
         <input type="hidden" name="acao" value="guardar_produto">
         <input type="hidden" name="idProduto" value="<?= admin_campo($produtoEdicao, 'IDProduto') ?>">
-        <h3><?= $produtoEdicao['IDProduto'] ? 'Editar produto' : 'Adicionar produto' ?></h3>
+        <div class="admin-form-heading">
+          <div>
+            <p class="admin-form-kicker"><?= $produtoEdicao['IDProduto'] ? 'A editar produto' : 'Novo produto' ?></p>
+            <h3><?= $produtoEdicao['IDProduto'] ? admin_campo($produtoEdicao, 'Nome') : 'Adicionar produto ao catálogo' ?></h3>
+          </div>
+          <a class="admin-secondary-button" href="admin.php#produtos">Cancelar</a>
+        </div>
 
         <div class="admin-form-grid">
           <label>SKU *
@@ -418,9 +498,25 @@ function admin_csrf(): string {
           <label>Stock mínimo *
             <input name="stockMinimo" type="number" min="0" step="1" value="<?= admin_campo($produtoEdicao, 'StockMinimo') ?>" required>
           </label>
-          <label>Imagem
-            <input name="imagem" type="url" maxlength="255" value="<?= admin_campo($produtoEdicao, 'Imagem') ?>">
-          </label>
+          <?php if ($imagensProduto['galeria']): ?>
+            <label class="admin-field-wide">Imagem principal
+              <select name="imagem">
+                <option value="" <?= $imagemSelecionada === '' ? 'selected' : '' ?>>Sem imagem</option>
+                <?php if ($imagemGuardada !== '' && !in_array($imagemGuardada, $imagensProduto['galeria'], true)): ?>
+                  <option value="<?= e($imagemGuardada) ?>" selected>Manter imagem atual</option>
+                <?php endif; ?>
+                <?php foreach ($imagensProduto['galeria'] as $indiceImagem => $imagemOpcao): ?>
+                  <option value="<?= e($imagemOpcao) ?>" <?= $imagemSelecionada === $imagemOpcao ? 'selected' : '' ?>>
+                    <?= strpos(strtolower(basename(rawurldecode($imagemOpcao))), '-catalago.') !== false ? 'Imagem de catálogo' : 'Imagem alternativa ' . ($indiceImagem + 1) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+          <?php else: ?>
+            <label>Imagem
+              <input name="imagem" type="text" maxlength="255" value="<?= admin_campo($produtoEdicao, 'Imagem') ?>" placeholder="URL ou caminho da imagem">
+            </label>
+          <?php endif; ?>
           <label class="admin-field-wide">Alergénios
             <input name="alergenios" maxlength="255" value="<?= admin_campo($produtoEdicao, 'Alergenios') ?>">
           </label>
@@ -437,42 +533,49 @@ function admin_csrf(): string {
           </label>
         </div>
         <div class="admin-form-actions">
-          <button class="admin-primary-button" type="submit">Guardar produto</button>
-          <?php if ($produtoEdicao['IDProduto']): ?>
-            <a class="admin-secondary-button" href="admin.php#produtos">Cancelar edição</a>
-          <?php endif; ?>
+          <button class="admin-primary-button" type="submit"><?= $produtoEdicao['IDProduto'] ? 'Guardar alterações' : 'Adicionar produto' ?></button>
         </div>
       </form>
+      <?php endif; ?>
 
-      <div class="admin-table-wrap">
-        <table class="admin-table">
-          <thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Stock</th><th>Estado</th><th>Ações</th></tr></thead>
-          <tbody>
-            <?php foreach ($produtos as $produto): ?>
-              <tr>
-                <td><strong><?= e($produto['Nome']) ?></strong><small><?= e($produto['SKU']) ?></small></td>
-                <td><?= e($produto['CategoriaNome'] ?? '—') ?></td>
-                <td><?= e(number_format((float) $produto['Preco'], 2, ',', ' ')) ?> €</td>
-                <td><?= (int) $produto['StockQuantidade'] ?></td>
-                <td><?= (int) $produto['Ativo'] ? 'Ativo' : 'Inativo' ?></td>
-                <td class="admin-row-actions">
-                  <a class="admin-secondary-button" href="admin.php?editar_produto=<?= (int) $produto['IDProduto'] ?>#produtos">Editar</a>
-                  <?php if ((int) $produto['Ativo']): ?>
-                    <form method="post" action="admin.php#produtos" onsubmit="return confirm('Desativar este produto?');">
-                      <?= admin_csrf() ?>
-                      <input type="hidden" name="acao" value="desativar_produto">
-                      <input type="hidden" name="idProduto" value="<?= (int) $produto['IDProduto'] ?>">
-                      <button class="admin-text-button" type="submit">Desativar</button>
-                    </form>
-                  <?php endif; ?>
-                </td>
-              </tr>
-            <?php endforeach; ?>
-            <?php if (!$produtos): ?>
-              <tr><td colspan="6">Ainda não há produtos registados.</td></tr>
-            <?php endif; ?>
-          </tbody>
-        </table>
+      <div class="admin-product-list">
+        <?php foreach ($produtos as $produto): ?>
+          <article class="admin-product-card <?= (string) $produto['IDProduto'] === (string) ($produtoEdicao['IDProduto'] ?? '') && $mostrarFormularioProduto ? 'is-editing' : '' ?>">
+            <div class="admin-product-main">
+              <?php $imagemProduto = (string) ($produto['Imagem'] ?? '') ?: produto_imagens((string) $produto['Nome'])['principal']; ?>
+              <?php if ($imagemProduto !== ''): ?>
+                <img class="admin-product-thumbnail" src="<?= e($imagemProduto) ?>" alt="">
+              <?php else: ?>
+                <div class="admin-product-icon" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $produto['Nome'], 0, 1))) ?></div>
+              <?php endif; ?>
+              <div>
+                <h3><?= e($produto['Nome']) ?></h3>
+                <p><?= e($produto['SKU']) ?> <span aria-hidden="true">·</span> <?= e($produto['CategoriaNome'] ?? 'Sem categoria') ?></p>
+              </div>
+            </div>
+            <div class="admin-product-meta">
+              <div><span>Preço</span><strong><?= e(number_format((float) $produto['Preco'], 2, ',', ' ')) ?> €</strong></div>
+              <div><span>Stock</span><strong><?= (int) $produto['StockQuantidade'] ?> un.</strong></div>
+              <span class="admin-status <?= (int) $produto['Ativo'] ? 'is-active' : 'is-inactive' ?>">
+                <?= (int) $produto['Ativo'] ? 'Ativo' : 'Inativo' ?>
+              </span>
+            </div>
+            <div class="admin-product-actions">
+              <a class="admin-secondary-button" href="admin.php?editar_produto=<?= (int) $produto['IDProduto'] ?>#form-produto">Editar</a>
+              <?php if ((int) $produto['Ativo']): ?>
+                <form method="post" action="admin.php#produtos" onsubmit="return confirm('Desativar este produto?');">
+                  <?= admin_csrf() ?>
+                  <input type="hidden" name="acao" value="desativar_produto">
+                  <input type="hidden" name="idProduto" value="<?= (int) $produto['IDProduto'] ?>">
+                  <button class="admin-text-button" type="submit">Desativar</button>
+                </form>
+              <?php endif; ?>
+            </div>
+          </article>
+        <?php endforeach; ?>
+        <?php if (!$produtos): ?>
+          <div class="admin-empty-state">Ainda não há produtos registados. Adicione o primeiro produto ao catálogo.</div>
+        <?php endif; ?>
       </div>
     </section>
 
@@ -482,13 +585,21 @@ function admin_csrf(): string {
           <h2>Categorias</h2>
           <p>Adicionar ou editar categorias existentes.</p>
         </div>
+        <a class="admin-primary-button" href="admin.php?nova_categoria=1#form-categoria">+ Adicionar categoria</a>
       </div>
 
-      <form class="admin-form" method="post" action="admin.php#categorias">
+      <?php if ($mostrarFormularioCategoria): ?>
+      <form class="admin-form admin-form-featured" id="form-categoria" method="post" action="admin.php#form-categoria">
         <?= admin_csrf() ?>
         <input type="hidden" name="acao" value="guardar_categoria">
         <input type="hidden" name="idCategoria" value="<?= admin_campo($categoriaEdicao, 'IDCategoria') ?>">
-        <h3><?= $categoriaEdicao['IDCategoria'] ? 'Editar categoria' : 'Adicionar categoria' ?></h3>
+        <div class="admin-form-heading">
+          <div>
+            <p class="admin-form-kicker"><?= $categoriaEdicao['IDCategoria'] ? 'A editar categoria' : 'Nova categoria' ?></p>
+            <h3><?= $categoriaEdicao['IDCategoria'] ? admin_campo($categoriaEdicao, 'Nome') : 'Adicionar categoria' ?></h3>
+          </div>
+          <a class="admin-secondary-button" href="admin.php#categorias">Cancelar</a>
+        </div>
         <div class="admin-form-grid">
           <label>Nome *
             <input name="nome" maxlength="80" value="<?= admin_campo($categoriaEdicao, 'Nome') ?>" required>
@@ -520,23 +631,21 @@ function admin_csrf(): string {
           </label>
         </div>
         <div class="admin-form-actions">
-          <button class="admin-primary-button" type="submit">Guardar categoria</button>
-          <?php if ($categoriaEdicao['IDCategoria']): ?>
-            <a class="admin-secondary-button" href="admin.php#categorias">Cancelar edição</a>
-          <?php endif; ?>
+          <button class="admin-primary-button" type="submit"><?= $categoriaEdicao['IDCategoria'] ? 'Guardar alterações' : 'Adicionar categoria' ?></button>
         </div>
       </form>
+      <?php endif; ?>
 
       <div class="admin-table-wrap">
         <table class="admin-table">
           <thead><tr><th>Categoria</th><th>Slug</th><th>Estado</th><th>Ações</th></tr></thead>
           <tbody>
             <?php foreach ($categorias as $categoria): ?>
-              <tr>
+              <tr class="<?= (string) $categoria['IDCategoria'] === (string) ($categoriaEdicao['IDCategoria'] ?? '') && $mostrarFormularioCategoria ? 'admin-category-editing' : '' ?>">
                 <td><?= e($categoria['Nome']) ?></td>
                 <td><?= e($categoria['Slug'] ?? '') ?></td>
-                <td><?= (int) ($categoria['Ativo'] ?? 0) ? 'Ativa' : 'Inativa' ?></td>
-                <td><a class="admin-secondary-button" href="admin.php?editar_categoria=<?= (int) $categoria['IDCategoria'] ?>#categorias">Editar</a></td>
+                <td><span class="admin-status <?= (int) ($categoria['Ativo'] ?? 0) ? 'is-active' : 'is-inactive' ?>"><?= (int) ($categoria['Ativo'] ?? 0) ? 'Ativa' : 'Inativa' ?></span></td>
+                <td><a class="admin-secondary-button" href="admin.php?editar_categoria=<?= (int) $categoria['IDCategoria'] ?>#form-categoria">Editar</a></td>
               </tr>
             <?php endforeach; ?>
             <?php if (!$categorias): ?>
