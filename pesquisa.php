@@ -94,7 +94,9 @@ $titulo = $query !== '' ? 'Pesquisa: ' . $query . ' | Cantinho Mercado' : 'Pesqu
 
       <button class="icon-button cart-button" aria-label="Carrinho com <?= $totalCarrinho ?> artigos">
         <svg class="svg" viewBox="0 0 24 24"><path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
-        <span class="cart-count"><?= $totalCarrinho ?></span>
+        <?php if ($totalCarrinho > 0): ?>
+          <span class="cart-count"><?= $totalCarrinho ?></span>
+        <?php endif; ?>
       </button>
     </div>
     <nav class="mobile-nav" id="mobileNav">
