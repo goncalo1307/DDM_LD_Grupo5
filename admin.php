@@ -76,7 +76,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         try {
             if ($acao === 'guardar_produto') {
-                $idProdutoRaw = trim($_POST['idProduto'] ?? '0');
+                $idProdutoRaw = trim($_POST['idProduto'] ?? '');
+                if ($idProdutoRaw === '') {
+                    $idProdutoRaw = '0';
+                }
                 if (!preg_match('/^\d+$/', $idProdutoRaw)) {
                     throw new InvalidArgumentException('Produto inválido.');
                 }

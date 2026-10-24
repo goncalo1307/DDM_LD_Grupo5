@@ -10,3 +10,7 @@ A tabela `ProdutoImagem`, usada para guardar a galeria, é criada automaticament
 ## Categorias
 
 Uma categoria só pode ser eliminada quando não tem produtos nem subcategorias associados. Reatribua os produtos ou subcategorias antes de tentar eliminá-la.
+
+## Componentes partilhados
+
+A navegação e o rodapé das páginas da loja são reutilizados a partir de `componentes/navbar.php` e `componentes/footer.php`.
