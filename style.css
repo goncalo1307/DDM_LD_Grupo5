@@ -153,6 +153,7 @@ nav a:hover {
 
 .search-results-main {
   flex: 1;
+  margin: 0 auto;
   padding-top: 44px;
   padding-bottom: 80px;
   animation: search-page-arrive .45s ease both;
