@@ -69,6 +69,7 @@ $produtos = $stmt->fetchAll();
             </div>
             <a href="conta/perfil.php">O meu perfil</a>
             <a href="conta/perfil.php#moradas">As minhas moradas</a>
+            <a href="conta/carrinho.php">O meu carrinho</a>
             <a href="conta/logout.php" class="logout-link">Terminar sessão</a>
           </div>
         </details>
@@ -78,10 +79,10 @@ $produtos = $stmt->fetchAll();
         </a>
       <?php endif; ?>
 
-      <button class="icon-button cart-button" aria-label="Carrinho com <?= $totalCarrinho ?> artigos">
+      <a class="icon-button cart-button" href="conta/carrinho.php" aria-label="Carrinho com <?= $totalCarrinho ?> artigos">
         <svg class="svg" viewBox="0 0 24 24"><path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
         <span class="cart-count" id="cartCount"><?= $totalCarrinho ?></span>
-      </button>
+      </a>
       <?php if ($logado && $tipoUtilizador === 'admin'): ?>
         <a class="admin-access-button" href="admin.php">Admin</a>
       <?php endif; ?>
@@ -92,6 +93,7 @@ $produtos = $stmt->fetchAll();
       <a href="#sobre">Quem somos</a>
       <?php if ($logado): ?>
         <a href="conta/perfil.php">O meu perfil (<?= e($primeiroNome) ?>)</a>
+        <a href="conta/carrinho.php">O meu carrinho (<?= $totalCarrinho ?>)</a>
         <a href="conta/logout.php">Terminar sessão</a>
       <?php else: ?>
         <a href="conta/conta.php">Iniciar sessão</a>
@@ -162,9 +164,20 @@ $produtos = $stmt->fetchAll();
                   <?php endif; ?>
                   <?= number_format($precoAtual, 2, ',', '.') ?> €
                 </p>
-                <a class="add-button details-button" href="produto.php?id=<?= (int) $produto['IDProduto'] ?>" aria-label="Ver detalhes de <?= e($nomeProduto) ?>">
-                  <svg class="svg" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
-                </a>
+                <div class="product-actions">
+                  <a class="add-button details-button" href="produto.php?id=<?= (int) $produto['IDProduto'] ?>" aria-label="Ver detalhes de <?= e($nomeProduto) ?>">
+                    <svg class="svg" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
+                  </a>
+                  <form method="post" action="conta/carrinho.php">
+                    <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                    <input type="hidden" name="acao" value="adicionar">
+                    <input type="hidden" name="id_produto" value="<?= (int) $produto['IDProduto'] ?>">
+                    <input type="hidden" name="quantidade" value="1">
+                    <button class="add-button cart-add-button" type="submit" aria-label="Adicionar <?= e($nomeProduto) ?> ao carrinho">
+                      <svg class="svg" viewBox="0 0 24 24"><path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
           </article>

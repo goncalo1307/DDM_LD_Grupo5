@@ -78,6 +78,7 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
             <div class="user-menu-head">Olá, <strong><?= e($primeiroNome) ?></strong></div>
             <a href="conta/perfil.php">O meu perfil</a>
             <a href="conta/perfil.php#moradas">As minhas moradas</a>
+            <a href="conta/carrinho.php">O meu carrinho</a>
             <?php if ($tipoUtilizador === 'admin'): ?>
               <a href="admin/index.php">Administração</a>
             <?php endif; ?>
@@ -90,10 +91,10 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
         </a>
       <?php endif; ?>
 
-      <button class="icon-button cart-button" aria-label="Carrinho com <?= $totalCarrinho ?> artigos">
+      <a class="icon-button cart-button" href="conta/carrinho.php" aria-label="Carrinho com <?= $totalCarrinho ?> artigos">
         <svg class="svg" viewBox="0 0 24 24"><path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
         <span class="cart-count"><?= $totalCarrinho ?></span>
-      </button>
+      </a>
     </div>
     <nav class="mobile-nav" id="mobileNav">
       <a href="index.php#ofertas">Ofertas</a>
@@ -101,6 +102,7 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
       <a href="index.php#sobre">Quem somos</a>
       <?php if ($logado): ?>
         <a href="conta/perfil.php">O meu perfil (<?= e($primeiroNome) ?>)</a>
+        <a href="conta/carrinho.php">O meu carrinho (<?= $totalCarrinho ?>)</a>
         <a href="conta/logout.php">Terminar sessão</a>
       <?php else: ?>
         <a href="conta/conta.php">Iniciar sessão</a>
@@ -170,6 +172,19 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
               Disponível para encomenda
             <?php endif; ?>
           </p>
+
+          <form class="detail-cart-form" method="post" action="conta/carrinho.php">
+            <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+            <input type="hidden" name="acao" value="adicionar">
+            <input type="hidden" name="id_produto" value="<?= (int) $produto['IDProduto'] ?>">
+            <label for="quantidade-produto">Quantidade</label>
+            <input id="quantidade-produto" name="quantidade" type="number" min="1"
+                   max="<?= min(99, max(1, $stock)) ?>" value="1" <?= $stock <= 0 ? 'disabled' : '' ?> required>
+            <button class="primary-link" type="submit" <?= $stock <= 0 ? 'disabled' : '' ?>>
+              Adicionar ao carrinho
+              <svg class="svg" viewBox="0 0 24 24"><path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
+            </button>
+          </form>
 
           <?php if (!empty($produto['Descricao'])): ?>
             <div class="detail-description">

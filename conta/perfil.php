@@ -280,7 +280,10 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
         <h1>Olá, <?= e(explode(' ', trim($u['Nome']))[0]) ?></h1>
         <p>@<?= e($u['Username']) ?><?= $desde ? ' · cliente desde ' . e($desde) : '' ?></p>
       </div>
-      <a class="btn-small btn-danger" href="logout.php">Terminar sessão</a>
+      <div class="perfil-acoes">
+        <a class="btn-small btn-secondary" href="carrinho.php">O meu carrinho</a>
+        <a class="btn-small btn-danger" href="logout.php">Terminar sessão</a>
+      </div>
     </div>
 
     <?php if ($ok): ?>

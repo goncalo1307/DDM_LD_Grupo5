@@ -9,10 +9,12 @@ if (!empty($_SESSION['utilizador_id'])) {
 
 $erro  = '';
 $email = '';
+$irParaCarrinho = ($_GET['motivo'] ?? '') === 'carrinho';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email    = mb_strtolower(trim($_POST['email'] ?? ''));
     $password = $_POST['password'] ?? '';
+    $irParaCarrinho = ($_POST['destino'] ?? '') === 'carrinho';
 
     if (!csrf_valido()) {
         $erro = 'Pedido inválido. Atualize a página e tente novamente.';
@@ -49,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare('UPDATE Utilizador SET UltimoLogin = NOW() WHERE IDUtilizador = ?')
                 ->execute([$u['IDUtilizador']]);
 
-            header('Location: ../index.php');
+            header('Location: ' . ($irParaCarrinho ? 'carrinho.php' : '../index.php'));
             exit;
         }
     }
@@ -89,12 +91,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="alert alert-ok" role="status">Conta criada com sucesso! Já pode iniciar sessão.</div>
       <?php endif; ?>
 
+      <?php if (($_GET['motivo'] ?? '') === 'carrinho'): ?>
+        <div class="alert alert-aviso" role="status">
+          Para guardar e consultar o seu carrinho, precisa de iniciar sessão ou criar uma conta.
+        </div>
+      <?php endif; ?>
+
       <?php if ($erro): ?>
         <div class="alert alert-error" role="alert"><?= e($erro) ?></div>
       <?php endif; ?>
 
       <form method="post" action="conta.php">
         <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+        <?php if ($irParaCarrinho): ?>
+          <input type="hidden" name="destino" value="carrinho">
+        <?php endif; ?>
 
         <label for="login-email">Email</label>
         <input id="login-email" name="email" type="email" autocomplete="email"
