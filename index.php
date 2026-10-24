@@ -1,6 +1,11 @@
 <?php
 require __DIR__ . '/conta/ligacao.php';
 
+if (isset($_GET['q']) && is_string($_GET['q']) && trim($_GET['q']) !== '') {
+    header('Location: pesquisa.php?q=' . rawurlencode(trim($_GET['q'])));
+    exit;
+}
+
 $logado         = !empty($_SESSION['utilizador_id']);
 $nomeUtilizador = $_SESSION['utilizador_nome'] ?? '';
 $primeiroNome   = $nomeUtilizador !== '' ? explode(' ', trim($nomeUtilizador))[0] : '';
@@ -53,10 +58,10 @@ $produtos = $stmt->fetchAll();
         <a href="#categorias">Categorias</a>
         <a href="#sobre">Quem somos</a>
       </nav>
-      <label class="search desktop-search">
+      <form class="search desktop-search search-to-page" action="pesquisa.php" method="get">
         <svg class="svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
-        <input class="search-input" type="search" placeholder="O que procura?" aria-label="Pesquisar produtos">
-      </label>
+        <input class="search-input" name="q" type="search" placeholder="O que procura?" aria-label="Pesquisar produtos">
+      </form>
 
       <?php if ($logado): ?>
         <details class="user-menu account-button" id="userMenu">
@@ -98,10 +103,10 @@ $produtos = $stmt->fetchAll();
         <a href="conta/criar-conta.php">Criar conta</a>
       <?php endif; ?>
     </nav>
-    <label class="search mobile-search">
+    <form class="search mobile-search search-to-page" action="pesquisa.php" method="get">
       <svg class="svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
-      <input class="search-input" type="search" placeholder="Pesquisar produtos" aria-label="Pesquisar produtos">
-    </label>
+      <input class="search-input" name="q" type="search" placeholder="Pesquisar produtos" aria-label="Pesquisar produtos">
+    </form>
   </header>
 
   <main>

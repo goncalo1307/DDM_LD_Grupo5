@@ -64,7 +64,7 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
         <a href="index.php#categorias">Produtos</a>
         <a href="index.php#sobre">Quem somos</a>
       </nav>
-      <form class="search desktop-search" action="index.php#categorias" method="get">
+      <form class="search desktop-search search-to-page" action="pesquisa.php" method="get">
         <svg class="svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
         <input name="q" type="search" placeholder="O que procura?" aria-label="Pesquisar produtos">
       </form>
@@ -107,7 +107,7 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
         <a href="conta/criar-conta.php">Criar conta</a>
       <?php endif; ?>
     </nav>
-    <form class="search mobile-search" action="index.php#categorias" method="get">
+    <form class="search mobile-search search-to-page" action="pesquisa.php" method="get">
       <svg class="svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
       <input name="q" type="search" placeholder="Pesquisar produtos" aria-label="Pesquisar produtos">
     </form>
@@ -223,23 +223,11 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
   </footer>
 
   <script>
-    const menuButton = document.getElementById('menuButton');
-    const mobileNav = document.getElementById('mobileNav');
-    menuButton.addEventListener('click', () => {
-      const isOpen = mobileNav.classList.toggle('open');
-      menuButton.setAttribute('aria-expanded', String(isOpen));
-      menuButton.setAttribute('aria-label', isOpen ? 'Fechar menu' : 'Abrir menu');
-    });
-    mobileNav.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', () => {
-        mobileNav.classList.remove('open');
-        menuButton.setAttribute('aria-expanded', 'false');
-      });
-    });
     document.addEventListener('click', event => {
       const userMenu = document.getElementById('userMenu');
       if (userMenu && userMenu.open && !userMenu.contains(event.target)) userMenu.open = false;
     });
   </script>
+  <script src="javascript.js"></script>
 </body>
 </html>
