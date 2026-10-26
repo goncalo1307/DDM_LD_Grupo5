@@ -17,6 +17,8 @@ A navegação e o rodapé das páginas da loja são reutilizados a partir de `co
 
 ## Acompanhamento de gastos
 
-O perfil usa `Encomenda` como fonte de gastos, sem duplicar o valor e a data numa tabela separada. Apenas encomendas com `EstadoPagamento = 'pago'` e `DataPagamento` preenchida são contabilizadas; `ItemEncomenda` mantém os detalhes dos produtos comprados. O painel apresenta total, compras recentes e média mensal ou semanal sobre os períodos com pagamentos.
+O perfil usa `GastoCompra` para apresentar total, compras recentes e média mensal ou semanal. O checkout cria um registo de gasto ligado à referência da encomenda.
 
-Para acelerar estas consultas em bases de dados já existentes, pode aplicar o índice em `sql/gastos.sql`. A tabela antiga `GastoCompra`, caso exista, não é usada pelo painel.
+## Checkout
+
+O checkout é feito no fim da página do carrinho. Revalida o stock dentro de uma transação, guarda a encomenda e os respetivos itens, regista o movimento de stock e limpa o carrinho. O envio custa 3,99 € em encomendas até 35 € e é gratuito acima desse valor. O método de pagamento fica registado, mas não existe integração com gateways: todas as encomendas ficam pendentes e não é efetuada qualquer cobrança. O total da encomenda também é guardado em `GastoCompra` para alimentar o painel de gastos.
