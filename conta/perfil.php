@@ -1,5 +1,6 @@
 <?php
 require __DIR__ . '/ligacao.php';
+require __DIR__ . '/gastos.php';
 
 // Só para quem tem sessão iniciada
 if (empty($_SESSION['utilizador_id'])) {
@@ -17,6 +18,10 @@ if (!$u) {
     header('Location: logout.php');
     exit;
 }
+
+gastos_compras_preparar($pdo);
+$periodoGastos = isset($_GET['periodo']) && $_GET['periodo'] === 'semanal' ? 'semanal' : 'mensal';
+$resumoGastos = gastos_compras_resumo($pdo, $id, $periodoGastos);
 
 function campo_csrf(): string {
     return '<input type="hidden" name="csrf" value="' . e(csrf_token()) . '">';
@@ -260,7 +265,7 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>O meu perfil | Cantinho</title>
-  <link rel="stylesheet" href="css/conta.css">
+  <link rel="stylesheet" href="css/conta.css?v=20261026225230">
 </head>
 <body>
   <header class="account-header">
@@ -294,7 +299,49 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
       <div class="alert alert-aviso">O seu email ainda não está verificado.</div>
     <?php endif; ?>
 
-    <!-- ===== Dados pessoais ===== -->
+    <!-- ===== Gastos ===== -->
+    <section class="account-card" id="gastos">
+      <h2>Os meus gastos</h2>
+      <p>Acompanhe o total das compras e a média dos períodos em que fez compras.</p>
+
+      <form class="gastos-periodo" method="get" action="perfil.php#gastos" aria-label="Período da média de gastos">
+        <button type="submit" name="periodo" value="mensal" class="<?= $periodoGastos === 'mensal' ? 'ativo' : '' ?>" aria-pressed="<?= $periodoGastos === 'mensal' ? 'true' : 'false' ?>">Ver média mensal</button>
+        <button type="submit" name="periodo" value="semanal" class="<?= $periodoGastos === 'semanal' ? 'ativo' : '' ?>" aria-pressed="<?= $periodoGastos === 'semanal' ? 'true' : 'false' ?>">Ver média semanal</button>
+      </form>
+
+      <div class="gastos-resumo">
+        <div>
+          <span>Média <?= $periodoGastos === 'mensal' ? 'mensal' : 'semanal' ?></span>
+          <strong><?= number_format($resumoGastos['media'], 2, ',', '.') ?> €</strong>
+        </div>
+        <div>
+          <span>Total em compras</span>
+          <strong><?= number_format($resumoGastos['total'], 2, ',', '.') ?> €</strong>
+        </div>
+        <div>
+          <span>Compras registadas</span>
+          <strong><?= $resumoGastos['compras'] ?></strong>
+        </div>
+      </div>
+
+      <?php if ($resumoGastos['recentes']): ?>
+        <h3>Compras recentes</h3>
+        <ul class="gastos-lista">
+          <?php foreach ($resumoGastos['recentes'] as $compra): ?>
+            <li>
+              <span>
+                <strong><?= e($compra['ReferenciaCompra']) ?></strong>
+                <time datetime="<?= e(date('Y-m-d\TH:i:s', strtotime($compra['DataCompra']))) ?>"><?= e(date('d/m/Y', strtotime($compra['DataCompra']))) ?></time>
+              </span>
+              <strong><?= number_format((float) $compra['ValorTotal'], 2, ',', '.') ?> €</strong>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php else: ?>
+        <p class="gastos-vazio">Ainda não tem compras pagas registadas.</p>
+      <?php endif; ?>
+    </section>
+
     <section class="account-card" id="dados">
       <h2>Dados pessoais</h2>
       <p>Atualize as suas informações.</p>

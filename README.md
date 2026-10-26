@@ -14,3 +14,9 @@ Uma categoria só pode ser eliminada quando não tem produtos nem subcategorias 
 ## Componentes partilhados
 
 A navegação e o rodapé das páginas da loja são reutilizados a partir de `componentes/navbar.php` e `componentes/footer.php`.
+
+## Acompanhamento de gastos
+
+O perfil usa `Encomenda` como fonte de gastos, sem duplicar o valor e a data numa tabela separada. Apenas encomendas com `EstadoPagamento = 'pago'` e `DataPagamento` preenchida são contabilizadas; `ItemEncomenda` mantém os detalhes dos produtos comprados. O painel apresenta total, compras recentes e média mensal ou semanal sobre os períodos com pagamentos.
+
+Para acelerar estas consultas em bases de dados já existentes, pode aplicar o índice em `sql/gastos.sql`. A tabela antiga `GastoCompra`, caso exista, não é usada pelo painel.

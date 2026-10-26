@@ -170,13 +170,153 @@ a {
 
 .alert-aviso { background: #fff8e1; color: #7a5b00; border: 1px solid #f1dd9b; }
 
-.perfil-main { max-width: 760px; }
-.perfil-main .account-card { margin-bottom: 24px; }
+.perfil-main {
+  max-width: 920px;
+  margin-top: 64px;
+  margin-bottom: 72px;
+}
+.perfil-main .account-card {
+  width: 100%;
+  margin: 0 auto 30px;
+  padding: clamp(26px, 4vw, 40px);
+  border: 1px solid rgba(24, 53, 43, .12);
+  border-radius: 22px;
+  box-shadow: 0 10px 28px rgba(24, 53, 43, .07);
+}
+.perfil-main .account-card h2 {
+  font-size: clamp(1.35rem, 2.5vw, 1.7rem);
+  letter-spacing: -.025em;
+}
+.perfil-main .account-card > p {
+  margin: 9px 0 0;
+  line-height: 1.65;
+}
+.perfil-top {
+  align-items: center;
+  margin-bottom: 34px;
+  padding: 8px 4px;
+}
+.perfil-top h1 {
+  font-size: clamp(2.3rem, 5vw, 3.2rem);
+}
+.perfil-top > div > p:last-child {
+  color: var(--muted);
+}
+.perfil-acoes { gap: 10px; }
+.perfil-acoes .btn-small {
+  padding: 12px 19px;
+  font-size: 14px;
+}
+
+.account-card form.gastos-periodo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+.gastos-periodo button {
+  flex: 1;
+  min-width: 190px;
+  margin: 0;
+  padding: 15px 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: transparent;
+  transition: background .18s, color .18s, border-color .18s, transform .18s;
+}
+.gastos-periodo button:hover {
+  border-color: var(--green);
+  transform: translateY(-1px);
+}
+.gastos-periodo button.ativo {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(24, 53, 43, .16);
+}
+.gastos-periodo button:focus-visible,
+.perfil-acoes .btn-small:focus-visible {
+  outline: 3px solid rgba(245, 213, 56, .8);
+  outline-offset: 3px;
+}
+.gastos-resumo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+.gastos-resumo > div {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 126px;
+  padding: 20px;
+  border: 1px solid rgba(24, 53, 43, .1);
+  border-radius: 16px;
+  background: var(--green-light);
+}
+.gastos-resumo > div:first-child {
+  border-color: rgba(245, 213, 56, .75);
+  background: #fff9d9;
+}
+.gastos-resumo span,
+.gastos-vazio { color: var(--muted); }
+.gastos-resumo span {
+  font-size: .9rem;
+  font-weight: 600;
+}
+.gastos-resumo strong { font-size: clamp(1.35rem, 2.6vw, 1.8rem); }
+.perfil-main .account-card h3 {
+  margin: 30px 0 8px;
+  font-size: 1.15rem;
+}
+.perfil-main .account-card .gastos-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.gastos-lista li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 17px 4px;
+  border-bottom: 1px solid rgba(24, 53, 43, .12);
+}
+.gastos-lista li > span { display: grid; gap: 4px; }
+.gastos-lista li > strong { font-size: 1.05rem; }
+.gastos-lista time { color: var(--muted); font-size: .9rem; }
+.gastos-vazio {
+  margin: 22px 0 0;
+  padding: 20px;
+  border-radius: 14px;
+  background: var(--green-light);
+  line-height: 1.6;
+}
+
+.perfil-main .account-card form:not(.gastos-periodo) {
+  gap: 12px;
+  margin-top: 26px;
+}
+.perfil-main .account-card input {
+  padding: 14px 16px;
+  border-radius: 10px;
+}
+.perfil-main .account-card form:not(.gastos-periodo) > button {
+  min-height: 50px;
+  margin-top: 16px;
+  border-radius: 11px;
+  transition: filter .18s, transform .18s;
+}
+.perfil-main .account-card form:not(.gastos-periodo) > button:hover {
+  filter: brightness(.97);
+  transform: translateY(-1px);
+}
 
 .perfil-top {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
   flex-wrap: wrap;
 }
@@ -212,14 +352,15 @@ a {
 .morada-item {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: 20px;
   flex-wrap: wrap;
-  padding: 16px;
-  margin: 12px 0;
-  border: 1px solid rgba(24, 53, 43, .15);
-  border-radius: 14px;
+  padding: 22px;
+  margin: 16px 0;
+  border: 1px solid rgba(24, 53, 43, .12);
+  border-radius: 16px;
+  background: #fffefa;
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.75;
 }
 .morada-acoes { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .badge {
@@ -232,7 +373,19 @@ a {
   font-weight: 800;
 }
 
-.nova-morada { margin-top: 18px; }
+.nova-morada {
+  margin-top: 24px;
+  padding: 18px 20px;
+  border: 1px solid rgba(24, 53, 43, .14);
+  border-radius: 16px;
+  background: var(--green-light);
+}
+.nova-morada summary {
+  cursor: pointer;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.nova-morada[open] summary { margin-bottom: 8px; }
 .nova-morada summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
 .vazio { color: #527064; }
 
@@ -449,5 +602,9 @@ a {
 
   .account-card {
     padding: 22px;
+  }
+
+  .gastos-resumo {
+    grid-template-columns: 1fr;
   }
 }
