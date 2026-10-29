@@ -19,6 +19,10 @@ A navegação e o rodapé das páginas da loja são reutilizados a partir de `co
 
 O perfil usa `GastoCompra` para apresentar total, compras recentes e média mensal ou semanal. O checkout cria um registo de gasto ligado à referência da encomenda.
 
+## Listas de compras predefinidas
+
+No checkout, cada utilizador pode guardar a compra como lista predefinida. Ao adicionar produtos, também pode escolher uma das suas listas; no carrinho pode ajustar quantidades, remover produtos e adicionar uma lista inteira ao carrinho, com validação do stock. As tabelas `ListaCompra` e `ItemListaCompra` são criadas automaticamente na primeira utilização da funcionalidade; o utilizador da base de dados precisa de permissões para criar tabelas.
+
 ## Checkout
 
 O checkout é feito no fim da página do carrinho. Revalida o stock dentro de uma transação, guarda a encomenda e os respetivos itens, regista o movimento de stock e limpa o carrinho. O envio custa 3,99 € em encomendas até 35 € e é gratuito acima desse valor. O método de pagamento fica registado, mas não existe integração com gateways: todas as encomendas ficam pendentes e não é efetuada qualquer cobrança. O total da encomenda também é guardado em `GastoCompra` para alimentar o painel de gastos.

@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/conta/ligacao.php';
 require __DIR__ . '/produto_imagens.php';
+require __DIR__ . '/conta/listas_compras.php';
 
 $idProduto = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 $produto = null;
@@ -26,6 +27,11 @@ $nomeUtilizador = $_SESSION['utilizador_nome'] ?? '';
 $primeiroNome = $nomeUtilizador !== '' ? explode(' ', trim($nomeUtilizador))[0] : '';
 $inicial = $primeiroNome !== '' ? mb_strtoupper(mb_substr($primeiroNome, 0, 1)) : '';
 $tipoUtilizador = $_SESSION['utilizador_tipo'] ?? 'cliente';
+$listasCompra = [];
+if ($logado) {
+    listas_compras_preparar($pdo);
+    $listasCompra = listas_compras_do_utilizador($pdo, (int) $_SESSION['utilizador_id']);
+}
 
 $totalCarrinho = 0;
 if ($logado) {
@@ -153,6 +159,15 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
             <input type="hidden" name="acao" value="adicionar">
             <input type="hidden" name="origem" value="produto">
             <input type="hidden" name="id_produto" value="<?= (int) $produto['IDProduto'] ?>">
+            <?php if ($listasCompra): ?>
+              <label for="lista-produto">Adicionar também a uma lista</label>
+              <select name="id_lista" id="lista-produto">
+                <option value="">Só no carrinho</option>
+                <?php foreach ($listasCompra as $listaCompra): ?>
+                  <option value="<?= (int) $listaCompra['IDListaCompra'] ?>">+ <?= e((string) $listaCompra['Nome']) ?></option>
+                <?php endforeach; ?>
+              </select>
+            <?php endif; ?>
             <label for="quantidade-produto">Quantidade</label>
             <input id="quantidade-produto" name="quantidade" type="number" min="1"
                    max="<?= min(99, max(1, $stock)) ?>" value="1" <?= $stock <= 0 ? 'disabled' : '' ?> required>

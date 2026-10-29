@@ -2,6 +2,7 @@
 require __DIR__ . '/ligacao.php';
 require __DIR__ . '/../produto_imagens.php';
 require __DIR__ . '/gastos.php';
+require __DIR__ . '/listas_compras.php';
 $indicativosTelefone = require __DIR__ . '/indicativos.php';
 
 if (empty($_SESSION['utilizador_id'])) {
@@ -10,8 +11,12 @@ if (empty($_SESSION['utilizador_id'])) {
 }
 
 gastos_compras_preparar($pdo);
+listas_compras_preparar($pdo);
 $idUtilizador = (int) $_SESSION['utilizador_id'];
+$listasCompra = listas_compras_do_utilizador($pdo, $idUtilizador);
 $erro = '';
+$nomeListaCheckout = '';
+$listaCompraCheckoutGuardada = '';
 $checkout = [
     'nome' => (string) ($_SESSION['utilizador_nome'] ?? ''),
     'telemovel' => '',
@@ -101,10 +106,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $idProduto = filter_input(INPUT_POST, 'id_produto', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 99]]);
             $quantidadeAdicionada = 0;
+            $idListaSelecionada = null;
+            $valorLista = $_POST['id_lista'] ?? '';
 
-            if (!$idProduto || !$quantidade) {
+            if (!is_string($valorLista) || $valorLista !== '' && !ctype_digit($valorLista)) {
+                $erro = 'Lista de compras inválida.';
+            } elseif ($valorLista !== '') {
+                $idListaSelecionada = (int) $valorLista;
+                $stmt = $pdo->prepare(
+                    'SELECT IDListaCompra FROM ListaCompra
+                     WHERE IDListaCompra = ? AND IDUtilizador = ?
+                     FOR UPDATE'
+                );
+                $stmt->execute([$idListaSelecionada, $idUtilizador]);
+                if (!$stmt->fetch()) {
+                    $erro = 'A lista selecionada já não existe.';
+                }
+            }
+
+            if ($erro === '' && (!$idProduto || !$quantidade)) {
                 $erro = 'Produto ou quantidade inválidos.';
-            } else {
+            } elseif ($erro === '') {
                 $stmt = $pdo->prepare('SELECT StockQuantidade FROM Produto WHERE IDProduto = ? AND Ativo = 1 FOR UPDATE');
                 $stmt->execute([$idProduto]);
                 $stock = $stmt->fetchColumn();
@@ -136,6 +158,169 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ->execute([$idCarrinho, $idProduto, $quantidadeFinal]);
                         $quantidadeAdicionada = $quantidade;
                     }
+                }
+
+                if ($erro === '' && $idListaSelecionada !== null) {
+                    $stmt = $pdo->prepare(
+                        'SELECT IDItemListaCompra, Quantidade
+                         FROM ItemListaCompra
+                         WHERE IDListaCompra = ? AND IDProduto = ?
+                         FOR UPDATE'
+                    );
+                    $stmt->execute([$idListaSelecionada, $idProduto]);
+                    $itemListaExistente = $stmt->fetch();
+                    $quantidadeLista = $quantidade + ($itemListaExistente ? (int) $itemListaExistente['Quantidade'] : 0);
+                    if ($quantidadeLista > 99) {
+                        $erro = 'O limite é 99 unidades por produto numa lista.';
+                    } elseif ($itemListaExistente) {
+                        $pdo->prepare(
+                            'UPDATE ItemListaCompra SET Quantidade = ?
+                             WHERE IDItemListaCompra = ? AND IDListaCompra = ?'
+                        )->execute([$quantidadeLista, $itemListaExistente['IDItemListaCompra'], $idListaSelecionada]);
+                    } else {
+                        $pdo->prepare(
+                            'INSERT INTO ItemListaCompra (IDListaCompra, IDProduto, Quantidade)
+                             VALUES (?, ?, ?)'
+                        )->execute([$idListaSelecionada, $idProduto, $quantidade]);
+                    }
+                    if ($erro === '') {
+                        $pdo->prepare('UPDATE ListaCompra SET DataAlterado = NOW() WHERE IDListaCompra = ?')
+                            ->execute([$idListaSelecionada]);
+                    }
+                }
+            }
+        } elseif ($acao === 'carregar_lista') {
+            $idLista = filter_input(INPUT_POST, 'id_lista', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if (!$idLista) {
+                $erro = 'Selecione uma lista válida.';
+            } else {
+                $stmt = $pdo->prepare(
+                    'SELECT IDListaCompra FROM ListaCompra
+                     WHERE IDListaCompra = ? AND IDUtilizador = ?
+                     FOR UPDATE'
+                );
+                $stmt->execute([$idLista, $idUtilizador]);
+                if (!$stmt->fetch()) {
+                    $erro = 'Esta lista já não existe.';
+                } else {
+                    $stmt = $pdo->prepare(
+                        'SELECT il.IDProduto, il.Quantidade, p.Ativo, p.StockQuantidade, p.Nome
+                         FROM ItemListaCompra il
+                         JOIN Produto p ON p.IDProduto = il.IDProduto
+                         WHERE il.IDListaCompra = ?
+                         ORDER BY p.Nome
+                         FOR UPDATE'
+                    );
+                    $stmt->execute([$idLista]);
+                    $itensLista = $stmt->fetchAll();
+                    if (!$itensLista) {
+                        $erro = 'Esta lista ainda não tem produtos.';
+                    }
+
+                    foreach ($itensLista as $itemLista) {
+                        $stmt = $pdo->prepare(
+                            'SELECT Quantidade FROM ItemCarrinho
+                             WHERE IDCarrinho = ? AND IDProduto = ?
+                             FOR UPDATE'
+                        );
+                        $stmt->execute([$idCarrinho, $itemLista['IDProduto']]);
+                        $quantidadeCarrinho = (int) ($stmt->fetchColumn() ?: 0);
+                        $quantidadeFinal = $quantidadeCarrinho + (int) $itemLista['Quantidade'];
+                        if (!(int) $itemLista['Ativo'] || $quantidadeFinal > 99
+                            || $quantidadeFinal > (int) $itemLista['StockQuantidade']) {
+                            $erro = 'Não foi possível carregar a lista: "' . $itemLista['Nome']
+                                . '" está indisponível ou excede o stock. Ajuste a lista ou o carrinho e tente novamente.';
+                            break;
+                        }
+                    }
+
+                    if ($erro === '' && !$idCarrinho) {
+                        $pdo->prepare('INSERT INTO Carrinho (IDUtilizador, DataCriacao, DataAlterado) VALUES (?, NOW(), NOW())')
+                            ->execute([$idUtilizador]);
+                        $idCarrinho = (int) $pdo->lastInsertId();
+                    }
+                    if ($erro === '') {
+                        foreach ($itensLista as $itemLista) {
+                            $stmt = $pdo->prepare(
+                                'SELECT IDItemCarrinho, Quantidade FROM ItemCarrinho
+                                 WHERE IDCarrinho = ? AND IDProduto = ?
+                                 FOR UPDATE'
+                            );
+                            $stmt->execute([$idCarrinho, $itemLista['IDProduto']]);
+                            $itemCarrinhoExistente = $stmt->fetch();
+                            if ($itemCarrinhoExistente) {
+                                $pdo->prepare(
+                                    'UPDATE ItemCarrinho SET Quantidade = ?
+                                     WHERE IDItemCarrinho = ? AND IDCarrinho = ?'
+                                )->execute([
+                                    (int) $itemCarrinhoExistente['Quantidade'] + (int) $itemLista['Quantidade'],
+                                    $itemCarrinhoExistente['IDItemCarrinho'],
+                                    $idCarrinho,
+                                ]);
+                            } else {
+                                $pdo->prepare(
+                                    'INSERT INTO ItemCarrinho (IDCarrinho, IDProduto, Quantidade, DataAdicionado)
+                                     VALUES (?, ?, ?, NOW())'
+                                )->execute([$idCarrinho, $itemLista['IDProduto'], $itemLista['Quantidade']]);
+                            }
+                        }
+                    }
+                }
+            }
+        } elseif ($acao === 'atualizar_item_lista') {
+            $idItemLista = filter_input(INPUT_POST, 'id_item_lista', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $idLista = filter_input(INPUT_POST, 'id_lista', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 99]]);
+            if (!$idItemLista || !$idLista || !$quantidade) {
+                $erro = 'Artigo ou quantidade inválidos.';
+            } else {
+                $stmt = $pdo->prepare(
+                    'SELECT il.IDItemListaCompra
+                     FROM ItemListaCompra il
+                     JOIN ListaCompra l ON l.IDListaCompra = il.IDListaCompra
+                     WHERE il.IDItemListaCompra = ? AND l.IDListaCompra = ? AND l.IDUtilizador = ?
+                     FOR UPDATE'
+                );
+                $stmt->execute([$idItemLista, $idLista, $idUtilizador]);
+                if (!$stmt->fetch()) {
+                    $erro = 'Este artigo já não está na lista.';
+                } else {
+                    $pdo->prepare(
+                        'UPDATE ItemListaCompra SET Quantidade = ?
+                         WHERE IDItemListaCompra = ? AND IDListaCompra = ?'
+                    )->execute([$quantidade, $idItemLista, $idLista]);
+                    $pdo->prepare('UPDATE ListaCompra SET DataAlterado = NOW() WHERE IDListaCompra = ?')
+                        ->execute([$idLista]);
+                }
+            }
+        } elseif ($acao === 'remover_item_lista') {
+            $idItemLista = filter_input(INPUT_POST, 'id_item_lista', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $idLista = filter_input(INPUT_POST, 'id_lista', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if (!$idItemLista || !$idLista) {
+                $erro = 'Artigo inválido.';
+            } else {
+                $stmt = $pdo->prepare(
+                    'DELETE il FROM ItemListaCompra il
+                     JOIN ListaCompra l ON l.IDListaCompra = il.IDListaCompra
+                     WHERE il.IDItemListaCompra = ? AND l.IDListaCompra = ? AND l.IDUtilizador = ?'
+                );
+                $stmt->execute([$idItemLista, $idLista, $idUtilizador]);
+                if ($stmt->rowCount() === 0) {
+                    $erro = 'Este artigo já não está na lista.';
+                } else {
+                    $pdo->prepare('UPDATE ListaCompra SET DataAlterado = NOW() WHERE IDListaCompra = ?')
+                        ->execute([$idLista]);
+                }
+            }
+        } elseif ($acao === 'eliminar_lista') {
+            $idLista = filter_input(INPUT_POST, 'id_lista', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if (!$idLista) {
+                $erro = 'Lista inválida.';
+            } else {
+                $stmt = $pdo->prepare('DELETE FROM ListaCompra WHERE IDListaCompra = ? AND IDUtilizador = ?');
+                $stmt->execute([$idLista, $idUtilizador]);
+                if ($stmt->rowCount() === 0) {
+                    $erro = 'Esta lista já não existe.';
                 }
             }
         } elseif ($acao === 'atualizar') {
@@ -176,6 +361,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ->execute([$idItem, $idCarrinho]);
             }
         } elseif ($acao === 'checkout') {
+            $nomeListaCheckout = isset($_POST['nome_lista_compra']) && is_string($_POST['nome_lista_compra'])
+                ? trim($_POST['nome_lista_compra'])
+                : '';
+            $guardarCompraComoLista = isset($_POST['guardar_compra_lista']);
+            if ($guardarCompraComoLista && mb_strlen($nomeListaCheckout) > 80) {
+                $errosCheckout[] = 'O nome da lista não pode exceder 80 caracteres.';
+            }
             $moradaCheckoutSelecionada = 'nova';
             $idMoradaSubmetida = 'nova';
             if ($moradasGuardadas) {
@@ -421,6 +613,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                          VALUES (?, ?, ?, NOW())'
                     )->execute([$idUtilizador, $numeroEncomenda, number_format($totalCheckout, 2, '.', '')]);
 
+                    if ($guardarCompraComoLista) {
+                        if ($nomeListaCheckout === '') {
+                            $nomeListaCheckout = 'Compra ' . date('d/m/Y');
+                        }
+                        $pdo->prepare('INSERT INTO ListaCompra (IDUtilizador, Nome) VALUES (?, ?)')
+                            ->execute([$idUtilizador, $nomeListaCheckout]);
+                        $idListaCompraCheckout = (int) $pdo->lastInsertId();
+                        $stmtItemLista = $pdo->prepare(
+                            'INSERT INTO ItemListaCompra (IDListaCompra, IDProduto, Quantidade)
+                             VALUES (?, ?, ?)'
+                        );
+                        foreach ($itensCheckout as $itemCheckout) {
+                            $stmtItemLista->execute([
+                                $idListaCompraCheckout,
+                                $itemCheckout['IDProduto'],
+                                $itemCheckout['Quantidade'],
+                            ]);
+                        }
+                        $listaCompraCheckoutGuardada = $nomeListaCheckout;
+                    }
+
                     $pdo->prepare('DELETE FROM ItemCarrinho WHERE IDCarrinho = ?')->execute([$idCarrinho]);
                     $numeroEncomendaCriada = $numeroEncomenda;
                 }
@@ -436,6 +649,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $pdo->commit();
             if ($acao === 'checkout') {
+                if ($listaCompraCheckoutGuardada !== '') {
+                    $_SESSION['lista_compra_flash'] = $listaCompraCheckoutGuardada;
+                }
                 header('Location: carrinho.php?encomenda=' . rawurlencode($numeroEncomendaCriada));
                 exit;
             }
@@ -443,12 +659,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['feedback_carrinho'] = [
                     'tipo' => 'ok',
                     'mensagem' => 'Foi inserido ' . $quantidadeAdicionada . ' '
-                        . ($quantidadeAdicionada === 1 ? 'produto' : 'produtos') . ' no seu carrinho.',
+                        . ($quantidadeAdicionada === 1 ? 'produto' : 'produtos')
+                        . ($idListaSelecionada !== null
+                            ? ' no seu carrinho e na lista selecionada.'
+                            : ' no seu carrinho.'),
                 ];
                 header('Location: ' . $paginaOrigem);
                 exit;
             }
-            $mensagem = $acao === 'adicionar' ? 'adicionado' : ($acao === 'atualizar' ? 'atualizado' : 'removido');
+            $mensagensAcao = [
+                'adicionar' => 'adicionado',
+                'atualizar' => 'atualizado',
+                'remover' => 'removido',
+                'carregar_lista' => 'lista_carregada',
+                'atualizar_item_lista' => 'lista_atualizada',
+                'remover_item_lista' => 'lista_atualizada',
+                'eliminar_lista' => 'lista_eliminada',
+            ];
+            $mensagem = $mensagensAcao[$acao] ?? '';
             header('Location: carrinho.php?ok=' . $mensagem);
             exit;
         }
@@ -465,6 +693,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $stmt = $pdo->prepare('SELECT IDCarrinho FROM Carrinho WHERE IDUtilizador = ? ORDER BY IDCarrinho DESC LIMIT 1');
 $stmt->execute([$idUtilizador]);
 $idCarrinho = (int) ($stmt->fetchColumn() ?: 0);
+$stmt = $pdo->prepare(
+    'SELECT l.IDListaCompra, l.Nome, COUNT(il.IDItemListaCompra) AS TotalItens,
+            COALESCE(SUM(
+                CASE
+                    WHEN p.PrecoPromocional > 0 AND p.PrecoPromocional < p.Preco
+                    THEN p.PrecoPromocional
+                    ELSE p.Preco
+                END * il.Quantidade
+            ), 0) AS TotalLista
+     FROM ListaCompra l
+     LEFT JOIN ItemListaCompra il ON il.IDListaCompra = l.IDListaCompra
+     LEFT JOIN Produto p ON p.IDProduto = il.IDProduto
+     WHERE l.IDUtilizador = ?
+     GROUP BY l.IDListaCompra, l.Nome, l.DataAlterado
+     ORDER BY l.DataAlterado DESC, l.IDListaCompra DESC'
+);
+$stmt->execute([$idUtilizador]);
+$listasCompra = $stmt->fetchAll();
+$itensPorLista = [];
+if ($listasCompra) {
+    $stmt = $pdo->prepare(
+        'SELECT il.IDListaCompra, il.IDItemListaCompra, il.Quantidade,
+                p.IDProduto, p.Nome, p.Unidade, p.Ativo, p.StockQuantidade
+         FROM ItemListaCompra il
+         JOIN ListaCompra l ON l.IDListaCompra = il.IDListaCompra
+         JOIN Produto p ON p.IDProduto = il.IDProduto
+         WHERE l.IDUtilizador = ?
+         ORDER BY l.IDListaCompra, p.Nome'
+    );
+    $stmt->execute([$idUtilizador]);
+    foreach ($stmt->fetchAll() as $itemLista) {
+        $itensPorLista[(int) $itemLista['IDListaCompra']][] = $itemLista;
+    }
+}
 $itens = [];
 
 if ($idCarrinho) {
@@ -502,8 +764,13 @@ $mensagens = [
     'adicionado' => 'Produto adicionado ao carrinho.',
     'atualizado' => 'Quantidade atualizada.',
     'removido' => 'Produto removido do carrinho.',
+    'lista_carregada' => 'Produtos da lista adicionados ao carrinho.',
+    'lista_atualizada' => 'Lista de compras atualizada.',
+    'lista_eliminada' => 'Lista de compras eliminada.',
 ];
 $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
+$listaCompraFlash = $_SESSION['lista_compra_flash'] ?? '';
+unset($_SESSION['lista_compra_flash']);
 ?>
 <!DOCTYPE html>
 <html lang="pt-PT">
@@ -544,6 +811,9 @@ $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
         O pagamento está pendente; não foi efetuada nenhuma cobrança.
       </div>
     <?php endif; ?>
+    <?php if ($listaCompraFlash !== ''): ?>
+      <div class="alert alert-ok" role="status">A compra foi guardada na lista «<?= e((string) $listaCompraFlash) ?>».</div>
+    <?php endif; ?>
     <?php if ($erro): ?>
       <div class="alert alert-error" role="alert"><?= e($erro) ?></div>
     <?php endif; ?>
@@ -552,6 +822,77 @@ $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
         <ul><?php foreach ($errosCheckout as $erroCheckout): ?><li><?= e($erroCheckout) ?></li><?php endforeach; ?></ul>
       </div>
     <?php endif; ?>
+
+    <section class="account-card shopping-lists" aria-labelledby="shopping-lists-title">
+      <h2 id="shopping-lists-title">As minhas listas predefinidas</h2>
+      <p>Guarde compras habituais e volte a adicioná-las ao carrinho quando precisar.</p>
+      <?php if ($listasCompra): ?>
+        <div class="shopping-list-grid">
+          <?php foreach ($listasCompra as $listaCompra): ?>
+            <?php $idListaAtual = (int) $listaCompra['IDListaCompra']; ?>
+            <article class="shopping-list">
+              <div class="shopping-list-heading">
+                <h3><?= e((string) $listaCompra['Nome']) ?></h3>
+                <span><?= (int) $listaCompra['TotalItens'] ?> <?= (int) $listaCompra['TotalItens'] === 1 ? 'produto' : 'produtos' ?></span>
+              </div>
+              <p class="shopping-list-total">
+                Total dos produtos: <strong><?= number_format((float) $listaCompra['TotalLista'], 2, ',', '.') ?> €</strong>
+              </p>
+              <?php if (!empty($itensPorLista[$idListaAtual])): ?>
+                <ul class="shopping-list-items">
+                  <?php foreach ($itensPorLista[$idListaAtual] as $itemLista): ?>
+                    <li>
+                      <a href="../produto.php?id=<?= (int) $itemLista['IDProduto'] ?>"><?= e((string) $itemLista['Nome']) ?></a>
+                      <?php if (!empty($itemLista['Unidade'])): ?><span><?= e((string) $itemLista['Unidade']) ?></span><?php endif; ?>
+                      <?php if (!(int) $itemLista['Ativo'] || (int) $itemLista['StockQuantidade'] < 1): ?>
+                        <span class="cart-stock-warning">Indisponível</span>
+                      <?php endif; ?>
+                      <div class="shopping-list-item-actions">
+                        <form method="post" action="carrinho.php">
+                          <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                          <input type="hidden" name="acao" value="atualizar_item_lista">
+                          <input type="hidden" name="id_lista" value="<?= $idListaAtual ?>">
+                          <input type="hidden" name="id_item_lista" value="<?= (int) $itemLista['IDItemListaCompra'] ?>">
+                          <label class="visually-hidden" for="quantidade-lista-<?= (int) $itemLista['IDItemListaCompra'] ?>">Quantidade de <?= e((string) $itemLista['Nome']) ?></label>
+                          <input id="quantidade-lista-<?= (int) $itemLista['IDItemListaCompra'] ?>" name="quantidade"
+                                 type="number" min="1" max="99" value="<?= (int) $itemLista['Quantidade'] ?>" required>
+                          <button type="submit">Atualizar</button>
+                        </form>
+                        <form method="post" action="carrinho.php">
+                          <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                          <input type="hidden" name="acao" value="remover_item_lista">
+                          <input type="hidden" name="id_lista" value="<?= $idListaAtual ?>">
+                          <input type="hidden" name="id_item_lista" value="<?= (int) $itemLista['IDItemListaCompra'] ?>">
+                          <button class="cart-remove-button" type="submit">Remover</button>
+                        </form>
+                      </div>
+                    </li>
+                  <?php endforeach; ?>
+                </ul>
+              <?php else: ?>
+                <p class="shopping-list-empty">Ainda sem produtos. Escolha uma lista no formulário ao adicionar um produto ao carrinho.</p>
+              <?php endif; ?>
+              <div class="shopping-list-actions">
+                <form method="post" action="carrinho.php">
+                  <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                  <input type="hidden" name="acao" value="carregar_lista">
+                  <input type="hidden" name="id_lista" value="<?= $idListaAtual ?>">
+                  <button type="submit" <?= (int) $listaCompra['TotalItens'] === 0 ? 'disabled' : '' ?>>Adicionar ao carrinho</button>
+                </form>
+                <form method="post" action="carrinho.php">
+                  <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                  <input type="hidden" name="acao" value="eliminar_lista">
+                  <input type="hidden" name="id_lista" value="<?= $idListaAtual ?>">
+                  <button class="cart-remove-button" type="submit">Eliminar lista</button>
+                </form>
+              </div>
+            </article>
+          <?php endforeach; ?>
+        </div>
+      <?php else: ?>
+        <p class="shopping-list-empty">Ainda não tem listas. Pode guardar esta compra como lista ao finalizar a encomenda.</p>
+      <?php endif; ?>
+    </section>
 
     <?php if (!$itens): ?>
       <section class="account-card cart-empty">
@@ -622,6 +963,16 @@ $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
             Os preços e o stock são confirmados ao finalizar.
           </p>
           <?php if ($carrinhoCheckoutValido): ?>
+            <div class="checkout-save-list">
+              <label for="guardar-compra-lista">
+                <input id="guardar-compra-lista" type="checkbox" name="guardar_compra_lista" value="1"
+                       form="checkout-form" <?= isset($_POST['guardar_compra_lista']) ? 'checked' : '' ?>>
+                Guardar esta compra como lista predefinida
+              </label>
+              <label class="visually-hidden" for="nome-lista-compra">Nome da lista</label>
+              <input id="nome-lista-compra" name="nome_lista_compra" type="text" maxlength="80"
+                     placeholder="Ex.: Compras semanais" form="checkout-form" value="<?= e($nomeListaCheckout) ?>">
+            </div>
             <a class="btn-small btn-cart-primary" href="#checkout">Finalizar encomenda</a>
           <?php else: ?>
             <p class="cart-stock-warning">Corrija os artigos sem stock para poder finalizar.</p>
@@ -635,7 +986,7 @@ $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
           <h2>Finalizar encomenda</h2>
           <p>Indique a morada de entrega e o método de pagamento pretendido.</p>
 
-          <form method="post" action="carrinho.php#checkout" class="checkout-form">
+          <form id="checkout-form" method="post" action="carrinho.php#checkout" class="checkout-form">
             <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
             <input type="hidden" name="acao" value="checkout">
 

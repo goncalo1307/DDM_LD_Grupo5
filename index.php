@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/conta/ligacao.php';
 require __DIR__ . '/produto_imagens.php';
+require __DIR__ . '/conta/listas_compras.php';
 
 if (isset($_GET['q']) && is_string($_GET['q']) && trim($_GET['q']) !== '') {
     header('Location: pesquisa.php?q=' . rawurlencode(trim($_GET['q'])));
@@ -12,6 +13,11 @@ $nomeUtilizador = $_SESSION['utilizador_nome'] ?? '';
 $primeiroNome   = $nomeUtilizador !== '' ? explode(' ', trim($nomeUtilizador))[0] : '';
 $inicial        = $primeiroNome !== '' ? mb_strtoupper(mb_substr($primeiroNome, 0, 1)) : '';
 $tipoUtilizador = $_SESSION['utilizador_tipo'] ?? 'cliente';
+$listasCompra = [];
+if ($logado) {
+    listas_compras_preparar($pdo);
+    $listasCompra = listas_compras_do_utilizador($pdo, (int) $_SESSION['utilizador_id']);
+}
 
 // Nº de artigos no carrinho do utilizador
 $totalCarrinho = 0;
@@ -125,6 +131,15 @@ $produtos = $stmt->fetchAll();
                     <input type="hidden" name="acao" value="adicionar">
                     <input type="hidden" name="origem" value="loja">
                     <input type="hidden" name="id_produto" value="<?= (int) $produto['IDProduto'] ?>">
+                    <?php if ($listasCompra): ?>
+                      <label class="visually-hidden" for="lista-produto-<?= (int) $produto['IDProduto'] ?>">Adicionar também a uma lista</label>
+                      <select name="id_lista" id="lista-produto-<?= (int) $produto['IDProduto'] ?>" aria-label="Adicionar também a uma lista">
+                        <option value="">Só no carrinho</option>
+                        <?php foreach ($listasCompra as $listaCompra): ?>
+                          <option value="<?= (int) $listaCompra['IDListaCompra'] ?>">+ <?= e((string) $listaCompra['Nome']) ?></option>
+                        <?php endforeach; ?>
+                      </select>
+                    <?php endif; ?>
                     <div class="quantity-control" aria-label="Selecionar quantidade">
                       <button type="button" data-quantity-step="-1" aria-label="Diminuir quantidade de <?= e($nomeProduto) ?>">−</button>
                       <input name="quantidade" type="number" min="1" max="99" step="1" value="1"

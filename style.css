@@ -547,6 +547,30 @@ h2 {
   gap: 6px;
 }
 
+.cart-add-form select {
+  width: 88px;
+  min-width: 0;
+  height: 36px;
+  padding: 4px 5px;
+  border: 1px solid rgba(24, 53, 43, .2);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--green);
+  font-size: 11px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .quantity-control {
   display: inline-flex;
   align-items: center;
@@ -861,6 +885,17 @@ h2 {
   border-radius: 9px;
   background: white;
   color: var(--green);
+}
+
+.detail-cart-form select {
+  min-height: 46px;
+  max-width: 240px;
+  padding: 8px 12px;
+  border: 1px solid rgba(24, 53, 43, .2);
+  border-radius: 9px;
+  background: white;
+  color: var(--green);
+  font: inherit;
 }
 
 .detail-cart-form .primary-link {
