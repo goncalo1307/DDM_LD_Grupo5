@@ -2,6 +2,7 @@
 require __DIR__ . '/ligacao.php';
 require __DIR__ . '/../produto_imagens.php';
 require __DIR__ . '/gastos.php';
+$indicativosTelefone = require __DIR__ . '/indicativos.php';
 
 if (empty($_SESSION['utilizador_id'])) {
     header('Location: conta.php?motivo=carrinho');
@@ -14,6 +15,7 @@ $erro = '';
 $checkout = [
     'nome' => (string) ($_SESSION['utilizador_nome'] ?? ''),
     'telemovel' => '',
+    'indicativo' => 'pt',
     'pais' => 'Portugal',
     'distrito' => '',
     'concelho' => '',
@@ -26,6 +28,23 @@ $checkout = [
     'metodo_pagamento' => 'pagamento_entrega',
     'notas' => '',
 ];
+$stmt = $pdo->prepare(
+    'SELECT IDMorada, Designacao, NomeDestinatario, Telemovel, Pais, Distrito, ConcelhoRegiao,
+            Rua, NumeroPorta, NumeroLote, CodigoPostal, Localidade, Predefinida
+     FROM Morada
+     WHERE IDUtilizador = ?
+     ORDER BY Predefinida DESC, IDMorada DESC'
+);
+$stmt->execute([$idUtilizador]);
+$moradasGuardadas = $stmt->fetchAll();
+$moradaPredefinida = '';
+foreach ($moradasGuardadas as $moradaGuardada) {
+    if ((int) $moradaGuardada['Predefinida'] === 1) {
+        $moradaPredefinida = (string) $moradaGuardada['IDMorada'];
+        break;
+    }
+}
+$moradaCheckoutSelecionada = $moradaPredefinida !== '' ? $moradaPredefinida : 'nova';
 $errosCheckout = [];
 $encomendaCriada = null;
 
@@ -157,6 +176,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ->execute([$idItem, $idCarrinho]);
             }
         } elseif ($acao === 'checkout') {
+            $moradaCheckoutSelecionada = 'nova';
+            $idMoradaSubmetida = 'nova';
+            if ($moradasGuardadas) {
+                $idMoradaSubmetida = isset($_POST['morada_guardada']) && is_string($_POST['morada_guardada'])
+                    ? $_POST['morada_guardada']
+                    : '';
+            }
+            $moradaSelecionadaCheckout = null;
+            foreach ($moradasGuardadas as $moradaGuardada) {
+                if ((string) $moradaGuardada['IDMorada'] === $idMoradaSubmetida) {
+                    $moradaCheckoutSelecionada = $idMoradaSubmetida;
+                    $moradaSelecionadaCheckout = $moradaGuardada;
+                    break;
+                }
+            }
+            if ($idMoradaSubmetida !== 'nova' && $moradaSelecionadaCheckout === null) {
+                $errosCheckout[] = 'Selecione uma morada válida da sua conta.';
+            } elseif ($idMoradaSubmetida === 'nova') {
+                $moradaCheckoutSelecionada = 'nova';
+            }
             foreach ($checkout as $campo => $valorInicial) {
                 if ($campo === 'metodo_pagamento') {
                     continue;
@@ -169,31 +208,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ? $_POST['metodo_pagamento']
                 : '';
 
-            $regrasCheckout = [
-                'nome' => ['Nome do destinatário', 100],
-                'pais' => ['País', 60],
-                'distrito' => ['Distrito', 60],
-                'concelho' => ['Concelho/Região', 60],
-                'rua' => ['Rua', 150],
-                'numero_porta' => ['Número de porta', 10],
-                'localidade' => ['Localidade', 80],
-            ];
-            foreach ($regrasCheckout as $campo => [$etiqueta, $maximo]) {
-                if ($checkout[$campo] === '' || mb_strlen($checkout[$campo]) > $maximo) {
-                    $errosCheckout[] = $etiqueta . ' é obrigatório e não pode exceder ' . $maximo . ' caracteres.';
+            $telefoneParaEncomenda = null;
+            if ($moradaSelecionadaCheckout !== null) {
+                $checkout['nome'] = $moradaSelecionadaCheckout['NomeDestinatario'];
+                $checkout['telemovel'] = (string) ($moradaSelecionadaCheckout['Telemovel'] ?? '');
+                $checkout['pais'] = $moradaSelecionadaCheckout['Pais'];
+                $checkout['distrito'] = $moradaSelecionadaCheckout['Distrito'];
+                $checkout['concelho'] = $moradaSelecionadaCheckout['ConcelhoRegiao'];
+                $checkout['rua'] = $moradaSelecionadaCheckout['Rua'];
+                $checkout['numero_porta'] = $moradaSelecionadaCheckout['NumeroPorta'];
+                $checkout['numero_lote'] = (string) ($moradaSelecionadaCheckout['NumeroLote'] ?? '');
+                $checkout['codigo_postal'] = $moradaSelecionadaCheckout['CodigoPostal'];
+                $checkout['localidade'] = $moradaSelecionadaCheckout['Localidade'];
+                $telefoneGuardado = trim($checkout['telemovel']);
+                if ($telefoneGuardado !== '' && substr($telefoneGuardado, 0, 1) !== '+') {
+                    $digitosGuardados = preg_replace('/\D/', '', $telefoneGuardado);
+                    $paisGuardado = mb_strtolower(trim($checkout['pais']));
+                    foreach ($indicativosTelefone as $configTelefoneGuardado) {
+                        $aliasesPais = array_merge([$configTelefoneGuardado['pais']], $configTelefoneGuardado['aliases']);
+                        $correspondePais = false;
+                        foreach ($aliasesPais as $aliasPais) {
+                            if (mb_strtolower($aliasPais) === $paisGuardado) {
+                                $correspondePais = true;
+                                break;
+                            }
+                        }
+                        if (!$correspondePais) {
+                            continue;
+                        }
+                        if (substr($digitosGuardados, 0, strlen($configTelefoneGuardado['codigo'])) === $configTelefoneGuardado['codigo']
+                            && strlen($digitosGuardados) > $configTelefoneGuardado['max']) {
+                            $digitosGuardados = substr($digitosGuardados, strlen($configTelefoneGuardado['codigo']));
+                        }
+                        if (strlen($digitosGuardados) >= $configTelefoneGuardado['min']
+                            && strlen($digitosGuardados) <= $configTelefoneGuardado['max']) {
+                            $telefoneGuardado = '+' . $configTelefoneGuardado['codigo'] . $digitosGuardados;
+                        }
+                        break;
+                    }
                 }
-            }
-            if ($checkout['telemovel'] !== '' && !preg_match('/^\+?[0-9 ]{9,20}$/', $checkout['telemovel'])) {
-                $errosCheckout[] = 'Indique um número de telemóvel válido.';
-            }
-            if ($checkout['numero_lote'] !== '' && mb_strlen($checkout['numero_lote']) > 30) {
-                $errosCheckout[] = 'Lote/andar não pode exceder 30 caracteres.';
-            }
-            if (!preg_match('/^\d{4}-\d{3}$/', $checkout['codigo_postal'])) {
-                $errosCheckout[] = 'Indique um código postal válido (0000-000).';
-            }
-            if ($checkout['nif'] !== '' && !preg_match('/^\d{9}$/', $checkout['nif'])) {
-                $errosCheckout[] = 'O NIF deve ter 9 dígitos.';
+                $telefoneParaEncomenda = $telefoneGuardado !== '' ? $telefoneGuardado : null;
+            } else {
+                $regrasCheckout = [
+                    'nome' => ['Nome do destinatário', 100],
+                    'pais' => ['País', 60],
+                    'distrito' => ['Distrito', 60],
+                    'concelho' => ['Concelho/Região', 60],
+                    'rua' => ['Rua', 150],
+                    'numero_porta' => ['Número de porta', 10],
+                    'localidade' => ['Localidade', 80],
+                ];
+                foreach ($regrasCheckout as $campo => [$etiqueta, $maximo]) {
+                    if ($checkout[$campo] === '' || mb_strlen($checkout[$campo]) > $maximo) {
+                        $errosCheckout[] = $etiqueta . ' é obrigatório e não pode exceder ' . $maximo . ' caracteres.';
+                    }
+                }
+                $configTelefone = $indicativosTelefone[$checkout['indicativo']] ?? null;
+                if ($configTelefone === null) {
+                    $errosCheckout[] = 'Selecione um indicativo telefónico válido.';
+                } elseif ($checkout['telemovel'] !== '') {
+                    if (!preg_match('/^[0-9 ]+$/', $checkout['telemovel'])) {
+                        $errosCheckout[] = 'Indique um número de telemóvel válido.';
+                    } else {
+                        $digitosTelefone = preg_replace('/\D/', '', $checkout['telemovel']);
+                        $totalDigitosTelefone = strlen($digitosTelefone);
+                        if ($totalDigitosTelefone < $configTelefone['min'] || $totalDigitosTelefone > $configTelefone['max']) {
+                            $errosCheckout[] = 'O número de telemóvel não corresponde ao indicativo selecionado.';
+                        } else {
+                            $telefoneParaEncomenda = '+' . $configTelefone['codigo'] . $digitosTelefone;
+                        }
+                    }
+                }
+                if ($checkout['numero_lote'] !== '' && mb_strlen($checkout['numero_lote']) > 30) {
+                    $errosCheckout[] = 'Lote/andar não pode exceder 30 caracteres.';
+                }
+                if (!preg_match('/^\d{4}-\d{3}$/', $checkout['codigo_postal'])) {
+                    $errosCheckout[] = 'Indique um código postal válido (0000-000).';
+                }
+                if ($checkout['nif'] !== '' && !preg_match('/^\d{9}$/', $checkout['nif'])) {
+                    $errosCheckout[] = 'O NIF deve ter 9 dígitos.';
+                }
             }
             if (mb_strlen($checkout['notas']) > 500) {
                 $errosCheckout[] = 'As notas não podem exceder 500 caracteres.';
@@ -255,7 +349,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $numeroEncomenda,
                     $idUtilizador,
                     $checkout['nome'],
-                    $checkout['telemovel'] !== '' ? $checkout['telemovel'] : null,
+                    $telefoneParaEncomenda,
                     $morada,
                     $checkout['codigo_postal'],
                     $checkout['localidade'],
@@ -547,13 +641,60 @@ $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
             <input type="hidden" name="acao" value="checkout">
 
             <div class="checkout-fields">
-              <div>
+              <?php if ($moradasGuardadas): ?>
+                <fieldset class="checkout-address-picker checkout-field-wide">
+                  <legend>Escolha a morada de entrega</legend>
+                  <div class="checkout-address-options">
+                    <?php foreach ($moradasGuardadas as $moradaGuardada): ?>
+                      <label class="checkout-address-option">
+                        <input type="radio" name="morada_guardada" value="<?= (int) $moradaGuardada['IDMorada'] ?>"
+                               <?= $moradaCheckoutSelecionada === (string) $moradaGuardada['IDMorada'] ? 'checked' : '' ?> required>
+                        <span class="checkout-address-option-content">
+                          <strong><?= e($moradaGuardada['Designacao']) ?></strong>
+                          <?php if ((int) $moradaGuardada['Predefinida'] === 1): ?><span class="checkout-address-badge">Predefinida</span><?php endif; ?>
+                          <span><?= e($moradaGuardada['NomeDestinatario']) ?></span>
+                          <span><?= e($moradaGuardada['Rua']) ?>, <?= e($moradaGuardada['NumeroPorta']) ?><?= $moradaGuardada['NumeroLote'] ? ', ' . e($moradaGuardada['NumeroLote']) : '' ?></span>
+                          <span><?= e($moradaGuardada['CodigoPostal']) ?> <?= e($moradaGuardada['Localidade']) ?></span>
+                          <span><?= e($moradaGuardada['ConcelhoRegiao']) ?>, <?= e($moradaGuardada['Distrito']) ?> · <?= e($moradaGuardada['Pais']) ?></span>
+                          <?php if ($moradaGuardada['Telemovel']): ?><span>Tel. <?= e($moradaGuardada['Telemovel']) ?></span><?php endif; ?>
+                          <span class="checkout-address-select-hint">Escolher esta morada</span>
+                        </span>
+                      </label>
+                    <?php endforeach; ?>
+                    <label class="checkout-address-option checkout-address-new">
+                      <input type="radio" name="morada_guardada" value="nova"
+                             <?= $moradaCheckoutSelecionada === 'nova' ? 'checked' : '' ?> required>
+                      <span class="checkout-address-option-content"><strong>Usar outra morada</strong><span>Introduzir os dados de uma nova morada</span></span>
+                    </label>
+                  </div>
+                </fieldset>
+              <?php endif; ?>
+              <fieldset id="checkout-manual-fields" class="checkout-manual-fields checkout-field-wide"
+                        <?= $moradasGuardadas && $moradaCheckoutSelecionada !== 'nova' ? 'disabled hidden' : '' ?>>
+                <div>
                 <label for="checkout-nome">Nome do destinatário *</label>
                 <input id="checkout-nome" name="nome" type="text" maxlength="100" value="<?= e($checkout['nome']) ?>" autocomplete="name" required>
-              </div>
+                </div>
               <div>
                 <label for="checkout-telemovel">Telemóvel</label>
-                <input id="checkout-telemovel" name="telemovel" type="tel" maxlength="20" value="<?= e($checkout['telemovel']) ?>" autocomplete="tel">
+                <div class="checkout-phone-fields">
+                  <select id="checkout-indicativo" name="indicativo" aria-label="Indicativo telefónico">
+                    <?php foreach ($indicativosTelefone as $codigoPais => $configTelefone): ?>
+                      <option value="<?= e($codigoPais) ?>"
+                              data-min="<?= (int) $configTelefone['min'] ?>"
+                              data-max="<?= (int) $configTelefone['max'] ?>"
+                              data-grupos="<?= e(implode(',', $configTelefone['grupos'])) ?>"
+                              data-aliases="<?= e(implode('|', $configTelefone['aliases'])) ?>"
+                              <?= $checkout['indicativo'] === $codigoPais ? 'selected' : '' ?>>
+                        +<?= e($configTelefone['codigo']) ?> (<?= e($configTelefone['pais']) ?>)
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
+                  <input id="checkout-telemovel" name="telemovel" type="tel" inputmode="numeric" maxlength="20"
+                         placeholder="912 345 678" value="<?= e($checkout['telemovel']) ?>"
+                         autocomplete="tel-national" aria-label="Número de telemóvel sem indicativo">
+                  <small class="checkout-phone-hint">Introduza o número sem o indicativo do país.</small>
+                </div>
               </div>
               <div class="checkout-field-wide">
                 <label for="checkout-rua">Rua *</label>
@@ -569,7 +710,9 @@ $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
               </div>
               <div>
                 <label for="checkout-cp">Código postal *</label>
-                <input id="checkout-cp" name="codigo_postal" type="text" maxlength="8" placeholder="0000-000" value="<?= e($checkout['codigo_postal']) ?>" autocomplete="postal-code" required>
+                <input id="checkout-cp" name="codigo_postal" type="text" inputmode="numeric" maxlength="8"
+                       placeholder="0000-000" data-mask="codigo-postal" value="<?= e($checkout['codigo_postal']) ?>"
+                       autocomplete="postal-code" pattern="[0-9]{4}-[0-9]{3}" title="Use o formato 0000-000" required>
               </div>
               <div>
                 <label for="checkout-localidade">Localidade *</label>
@@ -589,8 +732,14 @@ $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
               </div>
               <div>
                 <label for="checkout-nif">NIF (opcional)</label>
-                <input id="checkout-nif" name="nif" type="text" inputmode="numeric" maxlength="9" value="<?= e($checkout['nif']) ?>">
+                <input id="checkout-nif" name="nif" type="text" inputmode="numeric" maxlength="9"
+                       data-mask="nif" pattern="[0-9]{9}" title="O NIF deve ter 9 dígitos" value="<?= e($checkout['nif']) ?>">
               </div>
+              <div class="checkout-field-wide">
+                <label for="checkout-notas">Notas para a entrega</label>
+                <textarea id="checkout-notas" name="notas" maxlength="500" rows="3"><?= e($checkout['notas']) ?></textarea>
+              </div>
+              </fieldset>
               <div class="checkout-field-wide">
                 <label for="checkout-pagamento">Método de pagamento *</label>
                 <select id="checkout-pagamento" name="metodo_pagamento" required>
@@ -605,9 +754,6 @@ $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
                   <?php endforeach; ?>
                 </select>
               </div>
-              <div class="checkout-field-wide">
-                <label for="checkout-notas">Notas para a entrega</label>
-                <textarea id="checkout-notas" name="notas" maxlength="500" rows="3"><?= e($checkout['notas']) ?></textarea>
               </div>
             </div>
 
@@ -621,5 +767,113 @@ $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
       <?php endif; ?>
     <?php endif; ?>
   </main>
+  <script>
+    (() => {
+      const countryCode = document.getElementById('checkout-indicativo');
+      const phone = document.getElementById('checkout-telemovel');
+      const country = document.getElementById('checkout-pais');
+      const manualFields = document.getElementById('checkout-manual-fields');
+      const addressOptions = document.querySelectorAll('input[name="morada_guardada"]');
+      if (!countryCode || !phone || !country) return;
+
+      const normalizeCountry = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+      const formatDigits = (digits, groups) => {
+        const parts = [];
+        let offset = 0;
+        for (const size of groups) {
+          if (offset >= digits.length) break;
+          parts.push(digits.slice(offset, offset + size));
+          offset += size;
+        }
+        if (offset < digits.length) parts.push(digits.slice(offset));
+        return parts.join(' ');
+      };
+
+      const formatPhone = () => {
+        const selected = countryCode.selectedOptions[0];
+        const digits = phone.value.replace(/\D/g, '').slice(0, Number(selected.dataset.max));
+        phone.value = formatDigits(digits, selected.dataset.grupos.split(',').map(Number));
+      };
+
+      const validatePhone = () => {
+        const selected = countryCode.selectedOptions[0];
+        const digits = phone.value.replace(/\D/g, '');
+        const min = Number(selected.dataset.min);
+        const max = Number(selected.dataset.max);
+        phone.setCustomValidity(digits && (digits.length < min || digits.length > max)
+          ? 'O número não corresponde ao indicativo selecionado.'
+          : '');
+      };
+
+      const formatPhoneAtCursor = () => {
+        const cursor = phone.selectionStart ?? phone.value.length;
+        const digitsBeforeCursor = phone.value.slice(0, cursor).replace(/\D/g, '').length;
+        const selected = countryCode.selectedOptions[0];
+        const digits = phone.value.replace(/\D/g, '').slice(0, Number(selected.dataset.max));
+        const formatted = formatDigits(digits, selected.dataset.grupos.split(',').map(Number));
+        phone.value = formatted;
+        let nextCursor = 0;
+        let countedDigits = 0;
+        while (nextCursor < formatted.length && countedDigits < digitsBeforeCursor) {
+          if (/\d/.test(formatted[nextCursor])) countedDigits++;
+          nextCursor++;
+        }
+        if (formatted[nextCursor] === ' ' && countedDigits > 0) nextCursor++;
+        phone.setSelectionRange(nextCursor, nextCursor);
+        validatePhone();
+      };
+
+      const applyMask = (input, formatter, maxDigits) => {
+        input.addEventListener('input', () => {
+          const cursor = input.selectionStart ?? input.value.length;
+          const digitsBeforeCursor = input.value.slice(0, cursor).replace(/\D/g, '').length;
+          const digits = input.value.replace(/\D/g, '').slice(0, maxDigits);
+          const formatted = formatter(digits);
+          input.value = formatted;
+          let nextCursor = 0;
+          let countedDigits = 0;
+          while (nextCursor < formatted.length && countedDigits < digitsBeforeCursor) {
+            if (/\d/.test(formatted[nextCursor])) countedDigits++;
+            nextCursor++;
+          }
+          if (formatted[nextCursor] === '-' && countedDigits === 4) nextCursor++;
+          input.setSelectionRange(nextCursor, nextCursor);
+        });
+        input.value = formatter(input.value.replace(/\D/g, '').slice(0, maxDigits));
+      };
+
+      countryCode.addEventListener('change', () => {
+        formatPhone();
+        validatePhone();
+      });
+      phone.addEventListener('input', formatPhoneAtCursor);
+      country.addEventListener('change', () => {
+        const enteredCountry = normalizeCountry(country.value);
+        const matchingOption = Array.from(countryCode.options).find((option) =>
+          option.dataset.aliases.split('|').some((alias) => normalizeCountry(alias) === enteredCountry)
+        );
+        if (matchingOption) {
+          countryCode.value = matchingOption.value;
+          formatPhone();
+          validatePhone();
+        }
+      });
+
+      const updateAddressMode = () => {
+        const selectedAddress = document.querySelector('input[name="morada_guardada"]:checked');
+        if (manualFields && selectedAddress) {
+          manualFields.hidden = selectedAddress.value !== 'nova';
+          manualFields.disabled = selectedAddress.value !== 'nova';
+        }
+      };
+      addressOptions.forEach((option) => option.addEventListener('change', updateAddressMode));
+      applyMask(document.getElementById('checkout-cp'), (digits) =>
+        digits.length > 4 ? digits.slice(0, 4) + '-' + digits.slice(4) : digits, 7);
+      applyMask(document.getElementById('checkout-nif'), (digits) => digits, 9);
+      updateAddressMode();
+      formatPhone();
+      validatePhone();
+    })();
+  </script>
 </body>
 </html>

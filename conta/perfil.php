@@ -1,6 +1,7 @@
 <?php
 require __DIR__ . '/ligacao.php';
 require __DIR__ . '/gastos.php';
+$indicativosTelefone = require __DIR__ . '/indicativos.php';
 
 // Só para quem tem sessão iniciada
 if (empty($_SESSION['utilizador_id'])) {
@@ -45,6 +46,7 @@ $m = [
     'numero_porta' => '', 'numero_lote' => '', 'codigo_postal' => '', 'localidade' => '',
     'predefinida' => false,
 ];
+$indicativoMorada = 'pt';
 
 $mensagens = [
     'dados'           => 'Dados atualizados com sucesso.',
@@ -164,6 +166,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'predefinida'   => !empty($_POST['predefinida']),
         ];
         $e = &$erros['morada'];
+        $indicativoMorada = isset($_POST['m_indicativo']) && is_string($_POST['m_indicativo'])
+            ? $_POST['m_indicativo']
+            : '';
+        $telefoneMorada = null;
 
         // [chave, etiqueta, tamanho máximo, obrigatório]
         $regras = [
@@ -183,7 +189,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             elseif (mb_strlen($m[$k]) > $max) $e[] = "$etiqueta não pode ter mais de $max caracteres.";
         }
         if (!preg_match('/^\d{4}-\d{3}$/', $m['codigo_postal'])) $e[] = 'Código postal inválido (formato 0000-000).';
-        if ($m['telemovel'] !== '' && !preg_match('/^\+?[0-9 ]{9,20}$/', $m['telemovel'])) $e[] = 'Telemóvel da morada inválido.';
+        $configTelefoneMorada = $indicativosTelefone[$indicativoMorada] ?? null;
+        if ($configTelefoneMorada === null) {
+            $e[] = 'Selecione um indicativo telefónico válido.';
+        } elseif ($m['telemovel'] !== '') {
+            if (!preg_match('/^[0-9 ]+$/', $m['telemovel'])) {
+                $e[] = 'Telemóvel da morada inválido.';
+            } else {
+                $digitosTelefoneMorada = preg_replace('/\D/', '', $m['telemovel']);
+                $totalDigitosTelefoneMorada = strlen($digitosTelefoneMorada);
+                if ($totalDigitosTelefoneMorada < $configTelefoneMorada['min']
+                    || $totalDigitosTelefoneMorada > $configTelefoneMorada['max']) {
+                    $e[] = 'O número de telemóvel não corresponde ao indicativo selecionado.';
+                } else {
+                    $telefoneMorada = '+' . $configTelefoneMorada['codigo'] . $digitosTelefoneMorada;
+                }
+            }
+        }
 
         if (!$e) {
             try {
@@ -205,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())'
                 )->execute([
                     $id, $m['designacao'], $m['destinatario'],
-                    $m['telemovel']   !== '' ? $m['telemovel']   : null,
+                    $telefoneMorada,
                     $m['pais'], $m['distrito'], $m['concelho'], $m['rua'], $m['numero_porta'],
                     $m['numero_lote'] !== '' ? $m['numero_lote'] : null,
                     $m['codigo_postal'], $m['localidade'], $predef,
@@ -467,7 +489,23 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
           <input id="m-dest" name="destinatario" type="text" maxlength="100" value="<?= e($m['destinatario']) ?>" required>
 
           <label for="m-tel">Telemóvel <span>(opcional)</span></label>
-          <input id="m-tel" name="m_telemovel" type="tel" maxlength="20" value="<?= e($m['telemovel']) ?>">
+          <div class="address-phone-fields">
+            <select id="m-indicativo" name="m_indicativo" aria-label="Indicativo telefónico">
+              <?php foreach ($indicativosTelefone as $codigoPais => $configTelefone): ?>
+                <option value="<?= e($codigoPais) ?>"
+                        data-min="<?= (int) $configTelefone['min'] ?>"
+                        data-max="<?= (int) $configTelefone['max'] ?>"
+                        data-grupos="<?= e(implode(',', $configTelefone['grupos'])) ?>"
+                        data-aliases="<?= e(implode('|', $configTelefone['aliases'])) ?>"
+                        <?= $indicativoMorada === $codigoPais ? 'selected' : '' ?>>
+                  +<?= e($configTelefone['codigo']) ?> (<?= e($configTelefone['pais']) ?>)
+                </option>
+              <?php endforeach; ?>
+            </select>
+            <input id="m-tel" name="m_telemovel" type="tel" inputmode="numeric" maxlength="20"
+                   placeholder="912 345 678" value="<?= e($m['telemovel']) ?>"
+                   autocomplete="tel-national" aria-label="Número de telemóvel sem indicativo">
+          </div>
 
           <label for="m-rua">Rua *</label>
           <input id="m-rua" name="rua" type="text" maxlength="150" value="<?= e($m['rua']) ?>" required>
@@ -483,7 +521,9 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
             </div>
             <div>
               <label for="m-cp">Código postal *</label>
-              <input id="m-cp" name="codigo_postal" type="text" maxlength="8" placeholder="0000-000" value="<?= e($m['codigo_postal']) ?>" required>
+              <input id="m-cp" name="codigo_postal" type="text" inputmode="numeric" maxlength="8"
+                     placeholder="0000-000" data-mask="codigo-postal" pattern="[0-9]{4}-[0-9]{3}"
+                     title="Use o formato 0000-000" value="<?= e($m['codigo_postal']) ?>" required>
             </div>
             <div>
               <label for="m-loc">Localidade *</label>
@@ -512,5 +552,83 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
       </details>
     </section>
   </main>
+  <script>
+    (() => {
+      const countryCode = document.getElementById('m-indicativo');
+      const phone = document.getElementById('m-tel');
+      const country = document.getElementById('m-pais');
+      const postalCode = document.getElementById('m-cp');
+      if (!countryCode || !phone || !country || !postalCode) return;
+
+      const normalizeCountry = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+      const getFormattedPhone = () => {
+        const selected = countryCode.selectedOptions[0];
+        const groups = selected.dataset.grupos.split(',').map(Number);
+        const digits = phone.value.replace(/\D/g, '').slice(0, Number(selected.dataset.max));
+        const parts = [];
+        let offset = 0;
+        for (const size of groups) {
+          if (offset >= digits.length) break;
+          parts.push(digits.slice(offset, offset + size));
+          offset += size;
+        }
+        if (offset < digits.length) parts.push(digits.slice(offset));
+        return { value: parts.join(' '), digits, min: Number(selected.dataset.min) };
+      };
+
+      const formatPhone = () => {
+        const formatted = getFormattedPhone();
+        phone.value = formatted.value;
+        phone.setCustomValidity(formatted.digits && formatted.digits.length < formatted.min
+          ? 'O número não corresponde ao indicativo selecionado.'
+          : '');
+      };
+
+      const formatPhoneAtCursor = () => {
+        const cursor = phone.selectionStart ?? phone.value.length;
+        const digitsBeforeCursor = phone.value.slice(0, cursor).replace(/\D/g, '').length;
+        formatPhone();
+        let nextCursor = 0;
+        let countedDigits = 0;
+        while (nextCursor < phone.value.length && countedDigits < digitsBeforeCursor) {
+          if (/\d/.test(phone.value[nextCursor])) countedDigits++;
+          nextCursor++;
+        }
+        if (phone.value[nextCursor] === ' ' && countedDigits > 0) nextCursor++;
+        phone.setSelectionRange(nextCursor, nextCursor);
+      };
+
+      const formatPostalCode = () => {
+        const cursor = postalCode.selectionStart ?? postalCode.value.length;
+        const digitsBeforeCursor = postalCode.value.slice(0, cursor).replace(/\D/g, '').length;
+        const digits = postalCode.value.replace(/\D/g, '').slice(0, 7);
+        postalCode.value = digits.length > 4 ? digits.slice(0, 4) + '-' + digits.slice(4) : digits;
+        let nextCursor = 0;
+        let countedDigits = 0;
+        while (nextCursor < postalCode.value.length && countedDigits < digitsBeforeCursor) {
+          if (/\d/.test(postalCode.value[nextCursor])) countedDigits++;
+          nextCursor++;
+        }
+        if (postalCode.value[nextCursor] === '-' && countedDigits === 4) nextCursor++;
+        postalCode.setSelectionRange(nextCursor, nextCursor);
+      };
+
+      countryCode.addEventListener('change', formatPhone);
+      phone.addEventListener('input', formatPhoneAtCursor);
+      country.addEventListener('change', () => {
+        const enteredCountry = normalizeCountry(country.value);
+        const matchingOption = Array.from(countryCode.options).find((option) =>
+          option.dataset.aliases.split('|').some((alias) => normalizeCountry(alias) === enteredCountry)
+        );
+        if (matchingOption) {
+          countryCode.value = matchingOption.value;
+          formatPhone();
+        }
+      });
+      postalCode.addEventListener('input', formatPostalCode);
+      formatPhone();
+      formatPostalCode();
+    })();
+  </script>
 </body>
 </html>
