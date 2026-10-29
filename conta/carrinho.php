@@ -511,7 +511,7 @@ $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>O meu carrinho | Cantinho</title>
-  <link rel="stylesheet" href="css/conta.css?v=checkout-20261026">
+  <link rel="stylesheet" href="css/conta.css?v=checkout-radio-20261029">
 </head>
 <body>
   <header class="account-header">
@@ -634,7 +634,6 @@ $ok = $mensagens[$_GET['ok'] ?? ''] ?? '';
         <section class="account-card checkout-card" id="checkout">
           <h2>Finalizar encomenda</h2>
           <p>Indique a morada de entrega e o método de pagamento pretendido.</p>
-          <p class="checkout-payment-note">O checkout regista a encomenda como pendente. Não processa pagamentos nem guarda dados de cartão.</p>
 
           <form method="post" action="carrinho.php#checkout" class="checkout-form">
             <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">

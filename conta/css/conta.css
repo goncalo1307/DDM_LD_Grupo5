@@ -696,7 +696,7 @@ a {
   color: var(--muted);
   font-size: .82rem;
 }
-.checkout-fields input,
+.checkout-fields input:not([type="radio"]),
 .checkout-fields select,
 .checkout-fields textarea {
   width: 100%;
@@ -712,7 +712,7 @@ a {
   min-height: 100px;
   resize: vertical;
 }
-.checkout-fields input:focus,
+.checkout-fields input:not([type="radio"]):focus,
 .checkout-fields select:focus,
 .checkout-fields textarea:focus {
   border-color: var(--green);
