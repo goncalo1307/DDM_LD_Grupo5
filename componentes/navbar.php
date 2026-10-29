@@ -33,9 +33,6 @@ $valorPesquisa = $paginaPesquisa && isset($query) ? (string) $query : '';
             <a href="conta/perfil.php">O meu perfil</a>
             <a href="conta/perfil.php#moradas">As minhas moradas</a>
             <a href="conta/carrinho.php">O meu carrinho</a>
-            <?php if ($tipoUtilizador === 'admin'): ?>
-              <a href="admin.php">Administração</a>
-            <?php endif; ?>
             <a href="conta/logout.php" class="logout-link">Terminar sessão</a>
           </div>
         </details>
@@ -62,9 +59,6 @@ $valorPesquisa = $paginaPesquisa && isset($query) ? (string) $query : '';
       <?php if ($logado): ?>
         <a href="conta/perfil.php">O meu perfil (<?= e($primeiroNome) ?>)</a>
         <a href="conta/carrinho.php">O meu carrinho (<?= $totalCarrinho ?>)</a>
-        <?php if ($tipoUtilizador === 'admin'): ?>
-          <a href="admin.php">Administração</a>
-        <?php endif; ?>
         <a href="conta/logout.php">Terminar sessão</a>
       <?php else: ?>
         <a href="conta/conta.php">Iniciar sessão</a>
