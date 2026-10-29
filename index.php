@@ -131,15 +131,6 @@ $produtos = $stmt->fetchAll();
                     <input type="hidden" name="acao" value="adicionar">
                     <input type="hidden" name="origem" value="loja">
                     <input type="hidden" name="id_produto" value="<?= (int) $produto['IDProduto'] ?>">
-                    <?php if ($listasCompra): ?>
-                      <label class="visually-hidden" for="lista-produto-<?= (int) $produto['IDProduto'] ?>">Adicionar também a uma lista</label>
-                      <select name="id_lista" id="lista-produto-<?= (int) $produto['IDProduto'] ?>" aria-label="Adicionar também a uma lista">
-                        <option value="">Só no carrinho</option>
-                        <?php foreach ($listasCompra as $listaCompra): ?>
-                          <option value="<?= (int) $listaCompra['IDListaCompra'] ?>">+ <?= e((string) $listaCompra['Nome']) ?></option>
-                        <?php endforeach; ?>
-                      </select>
-                    <?php endif; ?>
                     <div class="quantity-control" aria-label="Selecionar quantidade">
                       <button type="button" data-quantity-step="-1" aria-label="Diminuir quantidade de <?= e($nomeProduto) ?>">−</button>
                       <input name="quantidade" type="number" min="1" max="99" step="1" value="1"

@@ -159,15 +159,6 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
             <input type="hidden" name="acao" value="adicionar">
             <input type="hidden" name="origem" value="produto">
             <input type="hidden" name="id_produto" value="<?= (int) $produto['IDProduto'] ?>">
-            <?php if ($listasCompra): ?>
-              <label for="lista-produto">Adicionar também a uma lista</label>
-              <select name="id_lista" id="lista-produto">
-                <option value="">Só no carrinho</option>
-                <?php foreach ($listasCompra as $listaCompra): ?>
-                  <option value="<?= (int) $listaCompra['IDListaCompra'] ?>">+ <?= e((string) $listaCompra['Nome']) ?></option>
-                <?php endforeach; ?>
-              </select>
-            <?php endif; ?>
             <label for="quantidade-produto">Quantidade</label>
             <input id="quantidade-produto" name="quantidade" type="number" min="1"
                    max="<?= min(99, max(1, $stock)) ?>" value="1" <?= $stock <= 0 ? 'disabled' : '' ?> required>
@@ -176,6 +167,45 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
               <svg class="svg" viewBox="0 0 24 24"><path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
             </button>
           </form>
+          <?php if ($logado): ?>
+            <button class="primary-link detail-list-button" type="button" id="abrir-lista-produto">
+              Adicionar a uma lista
+            </button>
+            <dialog class="shopping-list-dialog" id="lista-produto-dialog" aria-labelledby="lista-produto-titulo">
+              <form method="post" action="conta/carrinho.php" class="shopping-list-dialog-form" id="lista-produto-form">
+                <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                <input type="hidden" name="acao" value="adicionar_lista">
+                <input type="hidden" name="origem" value="produto">
+                <input type="hidden" name="id_produto" value="<?= (int) $produto['IDProduto'] ?>">
+                <input type="hidden" name="quantidade" id="quantidade-lista-produto" value="1">
+                <div class="shopping-list-dialog-heading">
+                  <div>
+                    <p class="section-kicker">As suas compras habituais</p>
+                    <h2 id="lista-produto-titulo">Adicionar a uma lista</h2>
+                  </div>
+                  <button class="shopping-list-dialog-close" type="button" id="fechar-lista-produto" aria-label="Fechar">×</button>
+                </div>
+                <label for="lista-produto">Escolha uma lista ou crie uma nova</label>
+                <select id="lista-produto" name="id_lista">
+                  <option value="">Criar uma nova lista</option>
+                  <?php foreach ($listasCompra as $listaCompra): ?>
+                    <option value="<?= (int) $listaCompra['IDListaCompra'] ?>"><?= e((string) $listaCompra['Nome']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <div id="nome-nova-lista-campo">
+                  <label for="nome-nova-lista">Nome da nova lista</label>
+                  <input id="nome-nova-lista" name="nome_nova_lista" type="text" maxlength="80"
+                         placeholder="Ex.: Compras semanais">
+                </div>
+                <div class="shopping-list-dialog-actions">
+                  <button class="primary-link" type="submit">Adicionar produto</button>
+                  <button class="shopping-list-dialog-cancel" type="button" id="cancelar-lista-produto">Cancelar</button>
+                </div>
+              </form>
+            </dialog>
+          <?php else: ?>
+            <a class="detail-list-login" href="conta/conta.php">Inicie sessão para adicionar a uma lista</a>
+          <?php endif; ?>
 
           <?php if (!empty($produto['Descricao'])): ?>
             <div class="detail-description">
@@ -224,6 +254,41 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
   <?php require __DIR__ . '/componentes/footer.php'; ?>
 
   <script>
+    const listDialog = document.getElementById('lista-produto-dialog');
+    const openListDialog = document.getElementById('abrir-lista-produto');
+    const closeListDialog = document.getElementById('fechar-lista-produto');
+    const cancelListDialog = document.getElementById('cancelar-lista-produto');
+    const listSelect = document.getElementById('lista-produto');
+    const newListField = document.getElementById('nome-nova-lista-campo');
+    const newListName = document.getElementById('nome-nova-lista');
+    const listQuantity = document.getElementById('quantidade-lista-produto');
+    const productQuantity = document.getElementById('quantidade-produto');
+    const listForm = document.getElementById('lista-produto-form');
+
+    if (listDialog && openListDialog && listSelect && newListField && newListName && listForm) {
+      const updateListChoice = () => {
+        const creatingList = listSelect.value === '';
+        newListField.hidden = !creatingList;
+        newListName.disabled = !creatingList;
+        newListName.required = creatingList;
+      };
+
+      listSelect.addEventListener('change', updateListChoice);
+      updateListChoice();
+      openListDialog.addEventListener('click', () => {
+        listQuantity.value = productQuantity && productQuantity.value ? productQuantity.value : '1';
+        listDialog.showModal();
+      });
+      if (closeListDialog) closeListDialog.addEventListener('click', () => listDialog.close());
+      if (cancelListDialog) cancelListDialog.addEventListener('click', () => listDialog.close());
+      listDialog.addEventListener('click', event => {
+        if (event.target === listDialog) listDialog.close();
+      });
+      listForm.addEventListener('submit', () => {
+        listQuantity.value = productQuantity && productQuantity.value ? productQuantity.value : '1';
+      });
+    }
+
     const cartFeedback = document.getElementById('cartFeedback');
     if (cartFeedback) {
       window.setTimeout(() => cartFeedback.remove(), 3000);

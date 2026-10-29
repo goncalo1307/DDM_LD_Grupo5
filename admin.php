@@ -110,6 +110,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($sku === '' || mb_strlen($sku) > 40) {
                     throw new InvalidArgumentException('Indique um SKU com até 40 caracteres.');
                 }
+                $stmt = $pdo->prepare('SELECT COUNT(*) FROM Produto WHERE SKU = ? AND IDProduto <> ?');
+                $stmt->execute([$sku, $idProduto]);
+                if ((int) $stmt->fetchColumn() > 0) {
+                    throw new InvalidArgumentException('Já existe um produto com este SKU. Indique um SKU diferente.');
+                }
                 if ($nome === '' || mb_strlen($nome) > 150) {
                     throw new InvalidArgumentException('Indique um nome com até 150 caracteres.');
                 }
@@ -118,6 +123,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if ($precoPromocional !== '' && !preg_match('/^\d+(?:\.\d{1,2})?$/', $precoPromocional)) {
                     throw new InvalidArgumentException('Indique um preço promocional válido ou deixe o campo vazio.');
+                }
+                if ($precoPromocional !== ''
+                    && ((float) $precoPromocional <= 0 || (float) $precoPromocional >= (float) $preco)) {
+                    throw new InvalidArgumentException('O preço promocional tem de ser superior a 0 € e inferior ao preço normal.');
                 }
                 if (!preg_match('/^\d+(?:\.\d{1,2})?$/', $taxaIva) || (float) $taxaIva > 100) {
                     throw new InvalidArgumentException('Indique uma taxa de IVA válida entre 0 e 100.');
@@ -360,7 +369,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->rollBack();
             }
             admin_limpar_uploads($ficheirosUploadCriados);
-            $erro = 'Não foi possível guardar a alteração. Verifique os dados e as relações da base de dados.';
+            error_log(
+                'Falha ao guardar alteração no admin (ação '
+                . (isset($acao) && is_string($acao) ? $acao : 'desconhecida')
+                . '): ' . $ex->getMessage()
+            );
+            $erro = strpos($ex->getMessage(), 'ck_produto_promo') !== false
+                ? 'O preço promocional tem de ser superior a 0 € e inferior ao preço normal.'
+                : 'Não foi possível guardar a alteração. Verifique os dados e as relações da base de dados.';
         }
     }
 }
@@ -675,7 +691,7 @@ function admin_csrf(): string {
             <input name="preco" type="number" min="0" step="0.01" value="<?= admin_campo($produtoEdicao, 'Preco') ?>" required>
           </label>
           <label>Preço promocional
-            <input name="precoPromocional" type="number" min="0" step="0.01" value="<?= admin_campo($produtoEdicao, 'PrecoPromocional') ?>">
+            <input name="precoPromocional" type="number" min="0.01" step="0.01" value="<?= admin_campo($produtoEdicao, 'PrecoPromocional') ?>">
           </label>
           <label>Taxa de IVA (%) *
             <input name="taxaIva" type="number" min="0" max="100" step="0.01" value="<?= admin_campo($produtoEdicao, 'TaxaIVA') ?>" required>

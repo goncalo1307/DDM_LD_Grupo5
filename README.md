@@ -21,7 +21,7 @@ O perfil usa `GastoCompra` para apresentar total, compras recentes e média mens
 
 ## Listas de compras predefinidas
 
-No checkout, cada utilizador pode guardar a compra como lista predefinida. Ao adicionar produtos, também pode escolher uma das suas listas; no carrinho pode ajustar quantidades, remover produtos e adicionar uma lista inteira ao carrinho, com validação do stock. As tabelas `ListaCompra` e `ItemListaCompra` são criadas automaticamente na primeira utilização da funcionalidade; o utilizador da base de dados precisa de permissões para criar tabelas.
+No checkout, cada utilizador pode guardar a compra como lista predefinida. Na página de um produto, o botão para adicionar a uma lista abre uma janela onde pode escolher uma lista existente ou criar uma nova. Na loja e nos resultados de pesquisa, também pode adicionar o produto ao carrinho e a uma lista no mesmo passo. No carrinho pode ajustar quantidades, remover produtos e adicionar uma lista inteira ao carrinho, com validação do stock. As tabelas `ListaCompra` e `ItemListaCompra` são criadas automaticamente na primeira utilização da funcionalidade; o utilizador da base de dados precisa de permissões para criar tabelas.
 
 ## Checkout
 

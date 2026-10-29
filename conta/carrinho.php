@@ -102,7 +102,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$idUtilizador]);
         $idCarrinho = (int) ($stmt->fetchColumn() ?: 0);
 
-        if ($acao === 'adicionar') {
+        if ($acao === 'adicionar_lista') {
+            $idProduto = filter_input(INPUT_POST, 'id_produto', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 99]]);
+            $valorLista = $_POST['id_lista'] ?? '';
+            $nomeNovaLista = isset($_POST['nome_nova_lista']) && is_string($_POST['nome_nova_lista'])
+                ? trim($_POST['nome_nova_lista'])
+                : '';
+            $idListaSelecionada = null;
+            $listaNovaCriada = false;
+
+            if (!$idProduto || !$quantidade) {
+                $erro = 'Produto ou quantidade inválidos.';
+            } elseif (!is_string($valorLista) || $valorLista !== '' && !ctype_digit($valorLista)) {
+                $erro = 'Lista de compras inválida.';
+            } elseif ($valorLista !== '') {
+                $idListaSelecionada = (int) $valorLista;
+                $stmt = $pdo->prepare(
+                    'SELECT IDListaCompra FROM ListaCompra
+                     WHERE IDListaCompra = ? AND IDUtilizador = ?
+                     FOR UPDATE'
+                );
+                $stmt->execute([$idListaSelecionada, $idUtilizador]);
+                if (!$stmt->fetch()) {
+                    $erro = 'A lista selecionada já não existe.';
+                }
+            } elseif ($nomeNovaLista === '' || mb_strlen($nomeNovaLista) > 80) {
+                $erro = 'Indique um nome para a nova lista (até 80 caracteres).';
+            }
+
+            if ($erro === '') {
+                $stmt = $pdo->prepare('SELECT IDProduto FROM Produto WHERE IDProduto = ? AND Ativo = 1 FOR UPDATE');
+                $stmt->execute([$idProduto]);
+                if (!$stmt->fetch()) {
+                    $erro = 'Este produto já não está disponível.';
+                }
+            }
+
+            if ($erro === '') {
+                if ($idListaSelecionada === null) {
+                    $pdo->prepare('INSERT INTO ListaCompra (IDUtilizador, Nome) VALUES (?, ?)')
+                        ->execute([$idUtilizador, $nomeNovaLista]);
+                    $idListaSelecionada = (int) $pdo->lastInsertId();
+                    $listaNovaCriada = true;
+                }
+
+                $stmt = $pdo->prepare(
+                    'SELECT IDItemListaCompra, Quantidade
+                     FROM ItemListaCompra
+                     WHERE IDListaCompra = ? AND IDProduto = ?
+                     FOR UPDATE'
+                );
+                $stmt->execute([$idListaSelecionada, $idProduto]);
+                $itemListaExistente = $stmt->fetch();
+                $quantidadeLista = $quantidade + ($itemListaExistente ? (int) $itemListaExistente['Quantidade'] : 0);
+                if ($quantidadeLista > 99) {
+                    $erro = 'O limite é 99 unidades por produto numa lista.';
+                } elseif ($itemListaExistente) {
+                    $pdo->prepare(
+                        'UPDATE ItemListaCompra SET Quantidade = ?
+                         WHERE IDItemListaCompra = ? AND IDListaCompra = ?'
+                    )->execute([$quantidadeLista, $itemListaExistente['IDItemListaCompra'], $idListaSelecionada]);
+                } else {
+                    $pdo->prepare(
+                        'INSERT INTO ItemListaCompra (IDListaCompra, IDProduto, Quantidade)
+                         VALUES (?, ?, ?)'
+                    )->execute([$idListaSelecionada, $idProduto, $quantidade]);
+                }
+                if ($erro === '') {
+                    $pdo->prepare('UPDATE ListaCompra SET DataAlterado = NOW() WHERE IDListaCompra = ?')
+                        ->execute([$idListaSelecionada]);
+                }
+            }
+        } elseif ($acao === 'adicionar') {
             $idProduto = filter_input(INPUT_POST, 'id_produto', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             $quantidade = filter_input(INPUT_POST, 'quantidade', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 99]]);
             $quantidadeAdicionada = 0;
@@ -655,6 +727,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Location: carrinho.php?encomenda=' . rawurlencode($numeroEncomendaCriada));
                 exit;
             }
+            if ($acao === 'adicionar_lista' && $paginaOrigem !== null) {
+                $_SESSION['feedback_carrinho'] = [
+                    'tipo' => 'ok',
+                    'mensagem' => $listaNovaCriada
+                        ? 'Lista criada e produto adicionado com sucesso.'
+                        : 'Produto adicionado à lista selecionada.',
+                ];
+                header('Location: ' . $paginaOrigem);
+                exit;
+            }
             if ($acao === 'adicionar' && $paginaOrigem !== null) {
                 $_SESSION['feedback_carrinho'] = [
                     'tipo' => 'ok',
@@ -682,7 +764,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $pdo->rollBack();
-        if ($acao === 'adicionar' && $paginaOrigem !== null) {
+        if (in_array($acao, ['adicionar', 'adicionar_lista'], true) && $paginaOrigem !== null) {
             $_SESSION['feedback_carrinho'] = ['tipo' => 'erro', 'mensagem' => $erro];
             header('Location: ' . $paginaOrigem);
             exit;

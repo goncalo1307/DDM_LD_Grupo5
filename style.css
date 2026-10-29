@@ -887,21 +887,194 @@ h2 {
   color: var(--green);
 }
 
-.detail-cart-form select {
+.detail-cart-form .primary-link {
+  margin: 0;
+  border: 0;
+  cursor: pointer;
+}
+
+.detail-list-button {
+  margin-top: 12px;
+  border: 0;
+  cursor: pointer;
+}
+
+.detail-list-login {
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.shopping-list-dialog {
+  width: min(100% - 32px, 480px);
+  max-width: 480px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(24, 53, 43, .12);
+  border-radius: 22px;
+  background: linear-gradient(145deg, #fffef8, #f3f6ee);
+  color: var(--green);
+  box-shadow: 0 28px 90px rgba(8, 24, 17, .32);
+  opacity: 0;
+  transform: translateY(18px) scale(.97);
+  transition:
+    opacity .24s ease,
+    transform .24s cubic-bezier(.2, .8, .2, 1),
+    display .24s allow-discrete,
+    overlay .24s allow-discrete;
+}
+
+.shopping-list-dialog[open] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@starting-style {
+  .shopping-list-dialog[open] {
+    opacity: 0;
+    transform: translateY(18px) scale(.97);
+  }
+}
+
+.shopping-list-dialog::backdrop {
+  background: rgba(8, 20, 14, .68);
+  backdrop-filter: blur(5px);
+  transition: background-color .24s ease;
+}
+
+@starting-style {
+  .shopping-list-dialog[open]::backdrop {
+    background: rgba(8, 20, 14, 0);
+  }
+}
+
+.shopping-list-dialog-form {
+  display: grid;
+  gap: 14px;
+  padding: 30px;
+  border-top: 5px solid var(--yellow);
+}
+
+.shopping-list-dialog-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.shopping-list-dialog-heading .section-kicker {
+  margin: 0 0 8px;
+}
+
+.shopping-list-dialog-heading h2 {
+  margin: 0;
+  font-size: clamp(22px, 5vw, 27px);
+  letter-spacing: -.035em;
+}
+
+.shopping-list-dialog-close {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(24, 53, 43, .16);
+  border-radius: 50%;
+  background: white;
+  color: var(--green);
+  cursor: pointer;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.shopping-list-dialog-close:hover {
+  transform: rotate(90deg);
+  background: var(--green);
+  color: #fff;
+}
+
+.shopping-list-dialog-form > label,
+.shopping-list-dialog-form > div > label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.shopping-list-dialog-form select,
+.shopping-list-dialog-form input[type="text"] {
+  width: 100%;
   min-height: 46px;
-  max-width: 240px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   border: 1px solid rgba(24, 53, 43, .2);
   border-radius: 9px;
   background: white;
   color: var(--green);
   font: inherit;
+  transition: border-color .18s ease, box-shadow .18s ease;
 }
 
-.detail-cart-form .primary-link {
+.shopping-list-dialog-form select:focus,
+.shopping-list-dialog-form input[type="text"]:focus {
+  border-color: var(--green);
+  outline: 0;
+  box-shadow: 0 0 0 4px rgba(24, 53, 43, .1);
+}
+
+.shopping-list-dialog-form #nome-nova-lista-campo {
+  display: grid;
+  gap: 8px;
+}
+
+.shopping-list-dialog-form #nome-nova-lista-campo[hidden] {
+  display: none;
+}
+
+.shopping-list-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.shopping-list-dialog-actions .primary-link {
   margin: 0;
   border: 0;
   cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.shopping-list-dialog-actions .primary-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(24, 53, 43, .2);
+}
+
+.shopping-list-dialog-cancel {
+  padding: 12px 18px;
+  border: 1px solid rgba(24, 53, 43, .2);
+  border-radius: 30px;
+  background: transparent;
+  color: var(--green);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  transition: background .18s ease, border-color .18s ease;
+}
+
+.shopping-list-dialog-cancel:hover {
+  border-color: rgba(24, 53, 43, .4);
+  background: rgba(24, 53, 43, .06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shopping-list-dialog,
+  .shopping-list-dialog::backdrop,
+  .shopping-list-dialog-close,
+  .shopping-list-dialog-actions .primary-link,
+  .shopping-list-dialog-cancel {
+    transition-duration: .01ms;
+  }
 }
 
 .detail-cart-form .primary-link:disabled {
