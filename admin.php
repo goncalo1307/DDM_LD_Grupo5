@@ -62,8 +62,6 @@ $categoriaVazia = [
     'IDCategoriaPai' => '',
     'Nome' => '',
     'Slug' => '',
-    'Descricao' => '',
-    'Ordem' => '0',
     'Ativo' => '1',
 ];
 
@@ -257,8 +255,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $idCategoriaPai = trim($_POST['idCategoriaPai'] ?? '');
                 $nome = trim($_POST['nome'] ?? '');
                 $slug = trim($_POST['slug'] ?? '');
-                $descricao = trim($_POST['descricao'] ?? '');
-                $ordem = trim($_POST['ordem'] ?? '0');
                 $ativo = isset($_POST['ativo']) ? 1 : 0;
 
                 if ($nome === '' || mb_strlen($nome) > 80) {
@@ -270,9 +266,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if (!preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) || mb_strlen($slug) > 100) {
                     throw new InvalidArgumentException('O slug deve conter letras minúsculas, números e hífen.');
-                }
-                if (!preg_match('/^\d+$/', $ordem)) {
-                    throw new InvalidArgumentException('A ordem deve ser um número inteiro não negativo.');
                 }
                 if ($idCategoriaPai !== '') {
                     if (!ctype_digit($idCategoriaPai) || (int) $idCategoriaPai === $idCategoria) {
@@ -293,19 +286,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $pdo->prepare(
                         'UPDATE Categoria
-                         SET IDCategoriaPai = ?, Nome = ?, Slug = ?, Descricao = ?, Ordem = ?, Ativo = ?
+                         SET IDCategoriaPai = ?, Nome = ?, Slug = ?, Ativo = ?
                          WHERE IDCategoria = ?'
                     )->execute([
                         $idCategoriaPai !== '' ? (int) $idCategoriaPai : null,
-                        $nome, $slug, $descricao !== '' ? $descricao : null, (int) $ordem, $ativo, $idCategoria,
+                        $nome, $slug, $ativo, $idCategoria,
                     ]);
                 } else {
                     $pdo->prepare(
-                        'INSERT INTO Categoria (IDCategoriaPai, Nome, Slug, Descricao, Ordem, Ativo)
-                         VALUES (?, ?, ?, ?, ?, ?)'
+                        'INSERT INTO Categoria (IDCategoriaPai, Nome, Slug, Ativo)
+                         VALUES (?, ?, ?, ?)'
                     )->execute([
                         $idCategoriaPai !== '' ? (int) $idCategoriaPai : null,
-                        $nome, $slug, $descricao !== '' ? $descricao : null, (int) $ordem, $ativo,
+                        $nome, $slug, $ativo,
                     ]);
                 }
 
@@ -380,7 +373,7 @@ $mensagens = [
 ];
 $mensagem = $mensagens[$_GET['ok'] ?? ''] ?? '';
 
-$categorias = $pdo->query('SELECT IDCategoria, IDCategoriaPai, Nome, Slug, Descricao, Ordem, Ativo FROM Categoria ORDER BY Nome')->fetchAll();
+$categorias = $pdo->query('SELECT IDCategoria, IDCategoriaPai, Nome, Slug, Ativo FROM Categoria ORDER BY Nome')->fetchAll();
 $fornecedores = $pdo->query('SELECT IDFornecedor, Nome FROM Fornecedor ORDER BY Nome')->fetchAll();
 $produtos = $pdo->query(
     'SELECT p.IDProduto, p.SKU, p.Nome, p.Preco, p.StockQuantidade, p.Ativo, p.Imagem,
@@ -437,8 +430,6 @@ if ($erro !== '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             'IDCategoriaPai' => admin_post_campo('idCategoriaPai'),
             'Nome' => admin_post_campo('nome'),
             'Slug' => admin_post_campo('slug'),
-            'Descricao' => admin_post_campo('descricao'),
-            'Ordem' => admin_post_campo('ordem'),
             'Ativo' => isset($_POST['ativo']) ? '1' : '0',
         ]);
         $mostrarFormularioCategoria = true;
@@ -858,12 +849,6 @@ function admin_csrf(): string {
           </label>
           <label>Slug
             <input name="slug" maxlength="100" value="<?= admin_campo($categoriaEdicao, 'Slug') ?>" placeholder="gerado-a-partir-do-nome">
-          </label>
-          <label>Ordem
-            <input name="ordem" type="number" min="0" step="1" value="<?= admin_campo($categoriaEdicao, 'Ordem') ?>">
-          </label>
-          <label class="admin-field-wide">Descrição
-            <textarea name="descricao" rows="3"><?= admin_campo($categoriaEdicao, 'Descricao') ?></textarea>
           </label>
           <label class="admin-checkbox">
             <input name="ativo" type="checkbox" value="1" <?= (string) ($categoriaEdicao['Ativo'] ?? '1') === '1' ? 'checked' : '' ?>>
