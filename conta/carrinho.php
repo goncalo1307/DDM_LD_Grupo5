@@ -912,14 +912,16 @@ unset($_SESSION['lista_compra_flash']);
         <div class="shopping-list-grid">
           <?php foreach ($listasCompra as $listaCompra): ?>
             <?php $idListaAtual = (int) $listaCompra['IDListaCompra']; ?>
-            <article class="shopping-list">
-              <div class="shopping-list-heading">
-                <h3><?= e((string) $listaCompra['Nome']) ?></h3>
-                <span><?= (int) $listaCompra['TotalItens'] ?> <?= (int) $listaCompra['TotalItens'] === 1 ? 'produto' : 'produtos' ?></span>
-              </div>
-              <p class="shopping-list-total">
-                Total dos produtos: <strong><?= number_format((float) $listaCompra['TotalLista'], 2, ',', '.') ?> €</strong>
-              </p>
+            <details class="shopping-list">
+              <summary class="shopping-list-summary">
+                <span class="shopping-list-heading">
+                  <strong><?= e((string) $listaCompra['Nome']) ?></strong>
+                  <span><?= (int) $listaCompra['TotalItens'] ?> <?= (int) $listaCompra['TotalItens'] === 1 ? 'produto' : 'produtos' ?></span>
+                </span>
+                <span class="shopping-list-total">
+                  Total: <strong><?= number_format((float) $listaCompra['TotalLista'], 2, ',', '.') ?> €</strong>
+                </span>
+              </summary>
               <?php if (!empty($itensPorLista[$idListaAtual])): ?>
                 <ul class="shopping-list-items">
                   <?php foreach ($itensPorLista[$idListaAtual] as $itemLista): ?>
@@ -968,7 +970,7 @@ unset($_SESSION['lista_compra_flash']);
                   <button class="cart-remove-button" type="submit">Eliminar lista</button>
                 </form>
               </div>
-            </article>
+            </details>
           <?php endforeach; ?>
         </div>
       <?php else: ?>
