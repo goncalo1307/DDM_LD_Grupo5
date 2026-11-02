@@ -22,6 +22,30 @@ if (!$u) {
 
 gastos_compras_preparar($pdo);
 $periodoGastos = isset($_GET['periodo']) && $_GET['periodo'] === 'semanal' ? 'semanal' : 'mensal';
+if (isset($_GET['exportar_gastos']) && $_GET['exportar_gastos'] === '1') {
+    $periodosGastos = gastos_compras_periodos($pdo, $id, $periodoGastos);
+    $nomePeriodo = $periodoGastos === 'semanal' ? 'semanais' : 'mensais';
+
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="gastos-' . $nomePeriodo . '.csv"');
+
+    $ficheiro = fopen('php://output', 'w');
+    if ($ficheiro === false) {
+        throw new RuntimeException('Não foi possível gerar o ficheiro CSV.');
+    }
+
+    fwrite($ficheiro, "\xEF\xBB\xBF");
+    fputcsv($ficheiro, ['Período', 'Total gasto (€)', 'Número de compras']);
+    foreach ($periodosGastos as $periodoGasto) {
+        fputcsv($ficheiro, [
+            $periodoGasto['Periodo'],
+            number_format((float) $periodoGasto['TotalGasto'], 2, '.', ''),
+            (int) $periodoGasto['TotalCompras'],
+        ]);
+    }
+    fclose($ficheiro);
+    exit;
+}
 $resumoGastos = gastos_compras_resumo($pdo, $id, $periodoGastos);
 
 function campo_csrf(): string {
@@ -330,6 +354,9 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
         <button type="submit" name="periodo" value="mensal" class="<?= $periodoGastos === 'mensal' ? 'ativo' : '' ?>" aria-pressed="<?= $periodoGastos === 'mensal' ? 'true' : 'false' ?>">Ver média mensal</button>
         <button type="submit" name="periodo" value="semanal" class="<?= $periodoGastos === 'semanal' ? 'ativo' : '' ?>" aria-pressed="<?= $periodoGastos === 'semanal' ? 'true' : 'false' ?>">Ver média semanal</button>
       </form>
+      <a class="btn-small btn-secondary" href="perfil.php?periodo=<?= e($periodoGastos) ?>&amp;exportar_gastos=1#gastos">
+        Exportar gastos <?= $periodoGastos === 'mensal' ? 'mensais' : 'semanais' ?> (CSV)
+      </a>
 
       <div class="gastos-resumo">
         <div>

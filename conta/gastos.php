@@ -61,3 +61,24 @@ function gastos_compras_resumo(PDO $pdo, int $idUtilizador, string $periodo): ar
         'recentes' => $stmt->fetchAll(),
     ];
 }
+
+function gastos_compras_periodos(PDO $pdo, int $idUtilizador, string $periodo): array {
+    if ($periodo === 'semanal') {
+        $periodoSql = "CONCAT(FLOOR(YEARWEEK(DataCompra, 3) / 100), '-W', LPAD(MOD(YEARWEEK(DataCompra, 3), 100), 2, '0'))";
+        $agrupamento = 'YEARWEEK(DataCompra, 3)';
+    } else {
+        $periodoSql = "DATE_FORMAT(DataCompra, '%Y-%m')";
+        $agrupamento = 'YEAR(DataCompra), MONTH(DataCompra)';
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT ' . $periodoSql . ' AS Periodo, SUM(ValorTotal) AS TotalGasto, COUNT(*) AS TotalCompras
+         FROM GastoCompra
+         WHERE IDUtilizador = ?
+         GROUP BY ' . $agrupamento . '
+         ORDER BY MAX(DataCompra) DESC'
+    );
+    $stmt->execute([$idUtilizador]);
+
+    return $stmt->fetchAll();
+}

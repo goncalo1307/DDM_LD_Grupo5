@@ -17,7 +17,7 @@ A navegação e o rodapé das páginas da loja são reutilizados a partir de `co
 
 ## Acompanhamento de gastos
 
-O perfil usa `GastoCompra` para apresentar total, compras recentes e média mensal ou semanal. O checkout cria um registo de gasto ligado à referência da encomenda.
+O perfil usa `GastoCompra` para apresentar total, compras recentes e média mensal ou semanal. Também permite exportar os totais por mês ou semana e o número de compras em CSV. O checkout cria um registo de gasto ligado à referência da encomenda.
 
 ## Listas de compras predefinidas
 
