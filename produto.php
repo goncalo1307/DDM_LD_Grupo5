@@ -9,7 +9,7 @@ $produto = null;
 if ($idProduto !== false && $idProduto !== null) {
     $stmt = $pdo->prepare(
         'SELECT IDProduto, SKU, Nome, Descricao, Marca, Preco, PrecoPromocional,
-                TaxaIVA, Unidade, StockQuantidade, StockMinimo, Alergenios,
+                TaxaIVA, Unidade, StockQuantidade, Alergenios,
                 Imagem, Destaque
          FROM Produto
          WHERE IDProduto = ? AND Ativo = 1'
@@ -49,17 +49,21 @@ $feedbackCarrinho = $_SESSION['feedback_carrinho'] ?? null;
 unset($_SESSION['feedback_carrinho']);
 
 $imagensProduto = $produto ? produto_imagens((string) $produto['Nome']) : ['principal' => '', 'galeria' => []];
-$imagemPrincipal = $produto && !empty($produto['Imagem']) ? (string) $produto['Imagem'] : $imagensProduto['principal'];
 $galeriaGuardada = $produto ? produto_galeria_listar($pdo, (int) $produto['IDProduto']) : [];
+$imagemCatalogo = $produto ? (string) ($produto['Imagem'] ?? '') : '';
+$galeriaGuardada = array_values(array_filter(
+    $galeriaGuardada,
+    static function (array $imagemGaleria) use ($imagemCatalogo, $imagensProduto): bool {
+        $caminho = (string) $imagemGaleria['Caminho'];
+        return $caminho !== $imagemCatalogo
+            && $caminho !== $imagensProduto['principal']
+            && strpos(basename(rawurldecode($caminho)), 'cartao-') !== 0;
+    }
+));
 $galeriaProduto = $galeriaGuardada
     ? array_column($galeriaGuardada, 'Caminho')
     : $imagensProduto['galeria'];
-if ($imagemPrincipal !== '' && !in_array($imagemPrincipal, $galeriaProduto, true)) {
-    array_unshift($galeriaProduto, $imagemPrincipal);
-}
-if ($imagemPrincipal !== '' && in_array($imagemPrincipal, $galeriaProduto, true)) {
-    $galeriaProduto = array_values(array_unique(array_merge([$imagemPrincipal], $galeriaProduto)));
-}
+$imagemPrincipal = $galeriaProduto[0] ?? '';
 
 $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produto não encontrado | Cantinho Mercado';
 ?>
@@ -90,7 +94,6 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
         $emPromocao = $precoPromocional > 0 && $precoPromocional < $preco;
         $precoAtual = $emPromocao ? $precoPromocional : $preco;
         $stock = (int) $produto['StockQuantidade'];
-        $stockMinimo = (int) $produto['StockMinimo'];
       ?>
       <nav class="breadcrumbs" aria-label="Navegação estrutural">
         <a href="index.php">Início</a>
@@ -147,8 +150,6 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
             <span aria-hidden="true"></span>
             <?php if ($stock <= 0): ?>
               Temporariamente indisponível
-            <?php elseif ($stockMinimo > 0 && $stock <= $stockMinimo): ?>
-              Últimas <?= $stock ?> unidades disponíveis
             <?php else: ?>
               Disponível para encomenda
             <?php endif; ?>

@@ -86,19 +86,27 @@ function produto_imagens(string $nome): array {
     }
 
     sort($ficheiros, SORT_NATURAL | SORT_FLAG_CASE);
-    $galeria = [];
     $imagemCatalogo = '';
+    $imagensEncontradas = [];
     foreach ($ficheiros as $ficheiro) {
         $caminhoRelativo = substr($ficheiro, strlen(__DIR__) + 1);
         $url = implode('/', array_map('rawurlencode', explode(DIRECTORY_SEPARATOR, $caminhoRelativo)));
-        $galeria[] = $url;
+        $imagensEncontradas[] = $url;
         if (strpos(strtolower(basename($ficheiro)), '-catalago.') !== false) {
             $imagemCatalogo = $url;
         }
     }
+    if ($imagemCatalogo === '') {
+        $imagemCatalogo = $imagensEncontradas[0];
+    }
 
     return [
-        'principal' => $imagemCatalogo !== '' ? $imagemCatalogo : $galeria[0],
-        'galeria' => $galeria,
+        'principal' => $imagemCatalogo,
+        'galeria' => array_values(array_filter(
+            $imagensEncontradas,
+            static function (string $imagem) use ($imagemCatalogo): bool {
+                return $imagem !== $imagemCatalogo;
+            }
+        )),
     ];
 }

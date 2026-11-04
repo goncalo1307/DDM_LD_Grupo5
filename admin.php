@@ -51,7 +51,6 @@ $produtoVazio = [
     'TaxaIVA' => '6.00',
     'Unidade' => '',
     'StockQuantidade' => '0',
-    'StockMinimo' => '5',
     'Alergenios' => '',
     'Imagem' => '',
     'Destaque' => '0',
@@ -63,6 +62,17 @@ $categoriaVazia = [
     'Nome' => '',
     'Slug' => '',
     'Ativo' => '1',
+];
+$fornecedorEdicao = [
+    'Nome' => '',
+    'NIF' => '',
+    'Email' => '',
+    'Telefone' => '',
+    'Endereco' => '',
+    'CodigoPostal' => '',
+    'Localidade' => '',
+    'Pais' => 'Portugal',
+    'Notas' => '',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -97,10 +107,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $taxaIva = trim($_POST['taxaIva'] ?? '6.00');
                 $unidade = trim($_POST['unidade'] ?? '');
                 $stockQuantidade = trim($_POST['stockQuantidade'] ?? '');
-                $stockMinimo = trim($_POST['stockMinimo'] ?? '');
                 $alergenios = trim($_POST['alergenios'] ?? '');
                 $imagem = trim($_POST['imagem_card_atual'] ?? '');
-                $imagemCardAntiga = $imagem;
+                $imagemCardAntiga = '';
+                if ($idProduto > 0) {
+                    $stmt = $pdo->prepare('SELECT Imagem FROM Produto WHERE IDProduto = ?');
+                    $stmt->execute([$idProduto]);
+                    $imagemCardAntiga = (string) ($stmt->fetchColumn() ?: '');
+                }
+                $imagensAutomaticas = produto_imagens($nome);
+                $imagemCatalogoAutomatica = $imagensAutomaticas['principal'];
                 $destaque = isset($_POST['destaque']) ? 1 : 0;
                 $ativo = isset($_POST['ativo']) ? 1 : 0;
                 $uploadImagemCard = admin_uploads('imagem_card', 1);
@@ -131,8 +147,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!preg_match('/^\d+(?:\.\d{1,2})?$/', $taxaIva) || (float) $taxaIva > 100) {
                     throw new InvalidArgumentException('Indique uma taxa de IVA válida entre 0 e 100.');
                 }
-                if (!preg_match('/^\d+$/', $stockQuantidade) || !preg_match('/^\d+$/', $stockMinimo)) {
-                    throw new InvalidArgumentException('O stock atual e mínimo devem ser números inteiros não negativos.');
+                if (!preg_match('/^\d+$/', $stockQuantidade)) {
+                    throw new InvalidArgumentException('O stock atual deve ser um número inteiro não negativo.');
                 }
                 if ($imagem !== '' && !filter_var($imagem, FILTER_VALIDATE_URL) && !admin_imagem_local_valida($imagem)) {
                     throw new InvalidArgumentException('A imagem atual do cartão não é válida.');
@@ -141,7 +157,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     throw new InvalidArgumentException('Verifique o tamanho dos campos Marca, Unidade e Alergénios.');
                 }
 
-                $galeriaAtual = $idProduto > 0 ? produto_galeria_listar($pdo, $idProduto) : [];
+                $galeriaArmazenada = $idProduto > 0 ? produto_galeria_listar($pdo, $idProduto) : [];
+                if ($imagem !== '' && (
+                    preg_match('~^destaque-~', basename(rawurldecode($imagem)))
+                    || in_array($imagem, $imagensAutomaticas['galeria'], true)
+                )) {
+                    throw new InvalidArgumentException('Uma imagem de destaque não pode ser usada como imagem do catálogo.');
+                }
+                if ($imagem !== '' && $imagem !== $imagemCatalogoAutomatica) {
+                    foreach ($galeriaArmazenada as $imagemGaleria) {
+                        if ((string) $imagemGaleria['Caminho'] === $imagem) {
+                            throw new InvalidArgumentException('Uma imagem de destaque não pode ser usada como imagem do catálogo.');
+                        }
+                    }
+                }
+                $galeriaAtual = array_values(array_filter(
+                    $galeriaArmazenada,
+                    static function (array $imagemGaleria) use ($imagem, $imagemCatalogoAutomatica, $imagensAutomaticas): bool {
+                        return !admin_imagem_e_catalogo(
+                            (string) $imagemGaleria['Caminho'],
+                            $imagem,
+                            $imagemCatalogoAutomatica
+                        );
+                    }
+                ));
                 produto_galeria_preparar($pdo);
                 $galeriaRestante = array_values(array_filter(
                     $galeriaAtual,
@@ -182,7 +221,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $taxaIva,
                     $unidade !== '' ? $unidade : 'un',
                     (int) $stockQuantidade,
-                    (int) $stockMinimo,
                     $alergenios !== '' ? $alergenios : null,
                     $imagem !== '' ? $imagem : null,
                     $destaque,
@@ -202,7 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'UPDATE Produto
                          SET SKU = ?, Nome = ?, Descricao = ?, Marca = ?, IDCategoria = ?, IDFornecedor = ?,
                              Preco = ?, PrecoPromocional = ?, TaxaIVA = ?, Unidade = ?, StockQuantidade = ?,
-                             StockMinimo = ?, Alergenios = ?, Imagem = ?, Destaque = ?, Ativo = ?,
+                             Alergenios = ?, Imagem = ?, Destaque = ?, Ativo = ?,
                              IDAlteradoPor = ?, DataAlterado = NOW()
                          WHERE IDProduto = ?'
                     )->execute($valores);
@@ -212,15 +250,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->prepare(
                         'INSERT INTO Produto
                             (SKU, Nome, Descricao, Marca, IDCategoria, IDFornecedor, Preco, PrecoPromocional,
-                             TaxaIVA, Unidade, StockQuantidade, StockMinimo, Alergenios, Imagem, Destaque,
+                             TaxaIVA, Unidade, StockQuantidade, Alergenios, Imagem, Destaque,
                              Ativo, IDCriadoPor, IDAlteradoPor)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
                     )->execute($valores);
                     $idProduto = (int) $pdo->lastInsertId();
                 }
 
-                foreach ($galeriaAtual as $imagemGaleria) {
+                foreach ($galeriaArmazenada as $imagemGaleria) {
                     $idImagemGaleria = (int) $imagemGaleria['IDProdutoImagem'];
+                    if (admin_imagem_e_catalogo(
+                        (string) $imagemGaleria['Caminho'],
+                        $imagem,
+                        $imagemCatalogoAutomatica
+                    )) {
+                        $pdo->prepare('DELETE FROM ProdutoImagem WHERE IDProdutoImagem = ? AND IDProduto = ?')
+                            ->execute([$idImagemGaleria, $idProduto]);
+                        continue;
+                    }
                     if (in_array($idImagemGaleria, $idsImagensRemover, true)) {
                         $ficheirosRemoverAposCommit[] = (string) $imagemGaleria['Caminho'];
                         $pdo->prepare('DELETE FROM ProdutoImagem WHERE IDProdutoImagem = ? AND IDProduto = ?')
@@ -243,9 +290,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->prepare('INSERT INTO ProdutoImagem (IDProduto, Caminho, Ordem) VALUES (?, ?, ?)')
                         ->execute([$idProduto, $caminhoGaleria, $ordemImagem++]);
                 }
-
                 $pdo->commit();
-                if ($imagemCardAntiga !== '' && $imagemCardAntiga !== $imagem) {
+                $imagemAntigaContinuaNaGaleria = in_array(
+                    $imagemCardAntiga,
+                    array_column($galeriaRestante, 'Caminho'),
+                    true
+                );
+                if ($imagemCardAntiga !== '' && $imagemCardAntiga !== $imagem && !$imagemAntigaContinuaNaGaleria) {
                     admin_apagar_imagem_upload($imagemCardAntiga, $idProduto);
                 }
                 foreach ($ficheirosRemoverAposCommit as $caminhoAntigo) {
@@ -315,6 +366,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 header('Location: admin.php?ok=categoria');
+                exit;
+            }
+
+            if ($acao === 'guardar_fornecedor') {
+                $nome = trim(admin_post_campo('nome'));
+                $nif = trim(admin_post_campo('nif'));
+                $email = trim(admin_post_campo('email'));
+                $telefone = trim(admin_post_campo('telefone'));
+                $endereco = trim(admin_post_campo('endereco'));
+                $codigoPostal = trim(admin_post_campo('codigoPostal'));
+                $localidade = trim(admin_post_campo('localidade'));
+                $pais = trim(admin_post_campo('pais'));
+                $notas = trim(admin_post_campo('notas'));
+
+                if ($nome === '' || mb_strlen($nome) > 120) {
+                    throw new InvalidArgumentException('Indique um nome de fornecedor com até 120 caracteres.');
+                }
+                if ($nif !== '' && !preg_match('/^\d{9}$/', $nif)) {
+                    throw new InvalidArgumentException('O NIF deve conter 9 algarismos.');
+                }
+                if ($email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 255)) {
+                    throw new InvalidArgumentException('Indique um endereço de email válido.');
+                }
+                if (mb_strlen($telefone) > 20 || mb_strlen($endereco) > 200
+                    || mb_strlen($codigoPostal) > 8 || mb_strlen($localidade) > 80
+                    || mb_strlen($pais) > 60 || mb_strlen($notas) > 500) {
+                    throw new InvalidArgumentException('Verifique o tamanho dos dados do fornecedor.');
+                }
+                if ($pais === '') {
+                    $pais = 'Portugal';
+                }
+
+                $pdo->prepare(
+                    'INSERT INTO Fornecedor (Nome, NIF, Email, Telefone, Endereco, CodigoPostal, Localidade, Pais, Notas)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                )->execute([
+                    $nome,
+                    $nif !== '' ? $nif : null,
+                    $email !== '' ? $email : null,
+                    $telefone !== '' ? $telefone : null,
+                    $endereco !== '' ? $endereco : null,
+                    $codigoPostal !== '' ? $codigoPostal : null,
+                    $localidade !== '' ? $localidade : null,
+                    $pais,
+                    $notas !== '' ? $notas : null,
+                ]);
+                header('Location: admin.php?ok=fornecedor');
                 exit;
             }
 
@@ -388,12 +486,17 @@ $mensagens = [
     'produto' => 'Produto guardado com sucesso.',
     'categoria' => 'Categoria guardada com sucesso.',
     'categoria_eliminada' => 'Categoria eliminada com sucesso.',
+    'fornecedor' => 'Fornecedor criado com sucesso.',
     'desativado' => 'Produto desativado.',
 ];
 $mensagem = $mensagens[$_GET['ok'] ?? ''] ?? '';
 
 $categorias = $pdo->query('SELECT IDCategoria, IDCategoriaPai, Nome, Slug, Ativo FROM Categoria ORDER BY Nome ASC, IDCategoria ASC')->fetchAll();
-$fornecedores = $pdo->query('SELECT IDFornecedor, Nome FROM Fornecedor ORDER BY Nome')->fetchAll();
+$fornecedores = $pdo->query(
+    'SELECT IDFornecedor, Nome, NIF, Email, Telefone, Endereco, CodigoPostal, Localidade, Pais, Notas
+     FROM Fornecedor
+     ORDER BY Nome'
+)->fetchAll();
 $produtos = $pdo->query(
     'SELECT p.IDProduto, p.SKU, p.Nome, p.Preco, p.StockQuantidade, p.Ativo, p.Imagem,
             c.Nome AS CategoriaNome
@@ -436,7 +539,6 @@ if ($erro !== '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             'TaxaIVA' => admin_post_campo('taxaIva'),
             'Unidade' => admin_post_campo('unidade'),
             'StockQuantidade' => admin_post_campo('stockQuantidade'),
-            'StockMinimo' => admin_post_campo('stockMinimo'),
             'Alergenios' => admin_post_campo('alergenios'),
             'Imagem' => admin_post_campo('imagem_card_atual'),
             'Destaque' => isset($_POST['destaque']) ? '1' : '0',
@@ -452,6 +554,18 @@ if ($erro !== '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             'Ativo' => isset($_POST['ativo']) ? '1' : '0',
         ]);
         $mostrarFormularioCategoria = true;
+    } elseif (($_POST['acao'] ?? '') === 'guardar_fornecedor') {
+        $fornecedorEdicao = [
+            'Nome' => admin_post_campo('nome'),
+            'NIF' => admin_post_campo('nif'),
+            'Email' => admin_post_campo('email'),
+            'Telefone' => admin_post_campo('telefone'),
+            'Endereco' => admin_post_campo('endereco'),
+            'CodigoPostal' => admin_post_campo('codigoPostal'),
+            'Localidade' => admin_post_campo('localidade'),
+            'Pais' => admin_post_campo('pais'),
+            'Notas' => admin_post_campo('notas'),
+        ];
     }
 }
 
@@ -478,6 +592,16 @@ function admin_imagem_local_valida(string $imagem): bool {
         && strpos($caminhoImagem, $raizImagens . DIRECTORY_SEPARATOR) === 0
         && in_array($extensao, ['jpg', 'jpeg', 'png', 'webp'], true)
         && is_file($caminhoImagem);
+}
+
+function admin_imagem_e_catalogo(
+    string $caminho,
+    string $imagemAtual,
+    string $imagemCatalogoAutomatica
+): bool {
+    return $caminho === $imagemAtual
+        || $caminho === $imagemCatalogoAutomatica
+        || strpos(basename(rawurldecode($caminho)), 'cartao-') === 0;
 }
 
 function admin_ids_post(string $campo): array {
@@ -615,13 +739,14 @@ function admin_csrf(): string {
       <div>
         <p class="eyebrow">Área reservada</p>
         <h1>Administração</h1>
-        <p>Gerir produtos e categorias da loja.</p>
+        <p>Gerir produtos, categorias e fornecedores da loja.</p>
       </div>
     </div>
 
     <nav class="admin-nav" aria-label="Secções de administração">
       <a href="#produtos">Produtos <span><?= count($produtos) ?></span></a>
       <a href="#categorias">Categorias <span><?= count($categorias) ?></span></a>
+      <a href="#fornecedores">Fornecedores <span><?= count($fornecedores) ?></span></a>
     </nav>
 
     <?php if ($mensagem): ?>
@@ -648,6 +773,21 @@ function admin_csrf(): string {
           $galeriaGuardada = !empty($produtoEdicao['IDProduto'])
               ? produto_galeria_listar($pdo, (int) $produtoEdicao['IDProduto'])
               : [];
+          if (strpos(basename(rawurldecode($imagemCardAtual)), 'destaque-') === 0
+              || in_array($imagemCardAtual, $imagensProduto['galeria'], true)
+              || in_array($imagemCardAtual, array_column($galeriaGuardada, 'Caminho'), true)) {
+              $imagemCardAtual = $imagensProduto['principal'];
+          }
+          $galeriaGuardada = array_values(array_filter(
+              $galeriaGuardada,
+              static function (array $imagemGaleria) use ($imagemCardAtual, $imagensProduto): bool {
+                  return !admin_imagem_e_catalogo(
+                      (string) $imagemGaleria['Caminho'],
+                      $imagemCardAtual,
+                      $imagensProduto['principal']
+                  );
+              }
+          ));
         ?>
         <?= admin_csrf() ?>
         <input type="hidden" name="acao" value="guardar_produto">
@@ -705,28 +845,18 @@ function admin_csrf(): string {
           <label>Quantidade em stock *
             <input name="stockQuantidade" type="number" min="0" step="1" value="<?= admin_campo($produtoEdicao, 'StockQuantidade') ?>" required>
           </label>
-          <label>Stock mínimo *
-            <input name="stockMinimo" type="number" min="0" step="1" value="<?= admin_campo($produtoEdicao, 'StockMinimo') ?>" required>
-          </label>
           <div class="admin-image-manager admin-field-wide">
             <h4>Imagem do cartão</h4>
-            <p>Esta imagem aparece no cartão do produto e no carrinho.</p>
+            <p>Esta imagem é usada apenas no catálogo, no cartão do produto e no carrinho.</p>
             <label>Escolher uma imagem existente
               <select name="imagem_card_atual">
                 <option value="">Usar imagem automática do produto</option>
-                <?php if ($imagemCardAtual !== '' && !in_array($imagemCardAtual, $imagensProduto['galeria'], true)): ?>
+                <?php if ($imagensProduto['principal'] !== ''): ?>
+                  <option value="<?= e($imagensProduto['principal']) ?>" <?= $imagemCardAtual === $imagensProduto['principal'] ? 'selected' : '' ?>>Imagem de catálogo</option>
+                <?php endif; ?>
+                <?php if ($imagemCardAtual !== '' && $imagemCardAtual !== $imagensProduto['principal']): ?>
                   <option value="<?= e($imagemCardAtual) ?>" selected>Manter imagem atual</option>
                 <?php endif; ?>
-                <?php foreach ($imagensProduto['galeria'] as $imagemOpcao): ?>
-                  <option value="<?= e($imagemOpcao) ?>" <?= $imagemCardAtual === $imagemOpcao ? 'selected' : '' ?>>
-                    <?= strpos(strtolower(basename(rawurldecode($imagemOpcao))), '-catalago.') !== false ? 'Imagem de catálogo' : 'Imagem alternativa' ?>
-                  </option>
-                <?php endforeach; ?>
-                <?php foreach ($galeriaGuardada as $imagemGaleria): ?>
-                  <?php if (!in_array((string) $imagemGaleria['Caminho'], $imagensProduto['galeria'], true)): ?>
-                    <option value="<?= e((string) $imagemGaleria['Caminho']) ?>" <?= $imagemCardAtual === $imagemGaleria['Caminho'] ? 'selected' : '' ?>>Imagem de destaque guardada</option>
-                  <?php endif; ?>
-                <?php endforeach; ?>
               </select>
             </label>
             <div class="admin-image-preview" id="imagem-card-preview" <?= $imagemCardAtual === '' ? 'hidden' : '' ?>>
@@ -738,7 +868,7 @@ function admin_csrf(): string {
           </div>
           <div class="admin-image-manager admin-field-wide">
             <h4>Imagens de destaque</h4>
-            <p>Até 3 imagens para a galeria na página do produto. As imagens atuais são mantidas, exceto as que marcar para remover.</p>
+            <p>Até 3 imagens exclusivas da galeria de destaque na página do produto. A imagem do catálogo não é usada nesta galeria.</p>
             <?php if ($galeriaGuardada): ?>
               <div class="admin-image-gallery">
                 <?php foreach ($galeriaGuardada as $imagemGaleria): ?>
@@ -904,6 +1034,76 @@ function admin_csrf(): string {
             <?php endforeach; ?>
             <?php if (!$categorias): ?>
               <tr><td colspan="4">Ainda não há categorias registadas.</td></tr>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-section" id="fornecedores">
+      <div class="admin-section-heading">
+        <div>
+          <h2>Fornecedores</h2>
+          <p>Registe fornecedores para os associar aos produtos.</p>
+        </div>
+      </div>
+
+      <form class="admin-form admin-form-featured" method="post" action="admin.php#fornecedores">
+        <?= admin_csrf() ?>
+        <input type="hidden" name="acao" value="guardar_fornecedor">
+        <div class="admin-form-grid">
+          <label>Nome *
+            <input name="nome" maxlength="120" value="<?= admin_campo($fornecedorEdicao, 'Nome') ?>" required>
+          </label>
+          <label>NIF
+            <input name="nif" maxlength="9" inputmode="numeric" pattern="[0-9]{9}" value="<?= admin_campo($fornecedorEdicao, 'NIF') ?>">
+          </label>
+          <label>Email
+            <input name="email" type="email" maxlength="255" value="<?= admin_campo($fornecedorEdicao, 'Email') ?>">
+          </label>
+          <label>Telefone
+            <input name="telefone" type="tel" maxlength="20" value="<?= admin_campo($fornecedorEdicao, 'Telefone') ?>">
+          </label>
+          <label>Morada
+            <input name="endereco" maxlength="200" value="<?= admin_campo($fornecedorEdicao, 'Endereco') ?>">
+          </label>
+          <label>Código postal
+            <input name="codigoPostal" maxlength="8" value="<?= admin_campo($fornecedorEdicao, 'CodigoPostal') ?>">
+          </label>
+          <label>Localidade
+            <input name="localidade" maxlength="80" value="<?= admin_campo($fornecedorEdicao, 'Localidade') ?>">
+          </label>
+          <label>País
+            <input name="pais" maxlength="60" value="<?= admin_campo($fornecedorEdicao, 'Pais') ?>">
+          </label>
+          <label class="admin-field-wide">Notas
+            <textarea name="notas" rows="3" maxlength="500"><?= admin_campo($fornecedorEdicao, 'Notas') ?></textarea>
+          </label>
+        </div>
+        <div class="admin-form-actions">
+          <button class="admin-primary-button" type="submit">Criar fornecedor</button>
+        </div>
+      </form>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Fornecedor</th><th>NIF</th><th>Contacto</th><th>Localidade</th></tr></thead>
+          <tbody>
+            <?php foreach ($fornecedores as $fornecedor): ?>
+              <tr>
+                <td><?= e($fornecedor['Nome']) ?></td>
+                <td><?= e($fornecedor['NIF'] ?? '') ?></td>
+                <td>
+                  <?= e($fornecedor['Email'] ?? '') ?>
+                  <?php if (!empty($fornecedor['Telefone'])): ?>
+                    <small><?= e($fornecedor['Telefone']) ?></small>
+                  <?php endif; ?>
+                </td>
+                <td><?= e($fornecedor['Localidade'] ?? '') ?></td>
+              </tr>
+            <?php endforeach; ?>
+            <?php if (!$fornecedores): ?>
+              <tr><td colspan="4">Ainda não há fornecedores registados.</td></tr>
             <?php endif; ?>
           </tbody>
         </table>

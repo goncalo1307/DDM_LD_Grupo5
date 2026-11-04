@@ -3,13 +3,17 @@ Projeto para avaliação Laboratório 2, Gonçalo &amp; André
 
 ## Imagens dos produtos
 
-Na edição do produto, a imagem do cartão é escolhida separadamente das imagens da galeria de destaque. A galeria aceita até 3 imagens JPG, PNG ou WebP, com um máximo de 5 MB por ficheiro. Os uploads são guardados em `imagens/produtos/uploads/`; o servidor Web precisa de permissão de escrita nessa pasta.
+Na edição do produto, a imagem do catálogo é independente das imagens de destaque: imagens de catálogo não aparecem na galeria, e imagens de destaque não são usadas no catálogo. A galeria aceita até 3 imagens JPG, PNG ou WebP, com um máximo de 5 MB por ficheiro. Os uploads são guardados em `imagens/produtos/uploads/`; o servidor Web precisa de permissão de escrita nessa pasta.
 
 A tabela `ProdutoImagem`, usada para guardar a galeria, é criada automaticamente quando a aplicação a consulta pela primeira vez; o utilizador da base de dados precisa de permissões para criar tabelas.
 
 ## Categorias
 
 As categorias são ordenadas automaticamente por nome, por ordem alfabética, sem opção de ordenação manual. Uma categoria só pode ser eliminada quando não tem produtos nem subcategorias associados. Reatribua os produtos ou subcategorias antes de tentar eliminá-la.
+
+## Fornecedores
+
+O painel de administração permite criar fornecedores com nome e dados de contacto. Os fornecedores criados ficam disponíveis para associação aos produtos.
 
 ## Componentes partilhados
 
