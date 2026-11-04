@@ -392,7 +392,7 @@ CREATE TABLE `utilizador` (
   `Username` varchar(50) NOT NULL,
   `Email` varchar(255) NOT NULL,
   `PasswordHash` varchar(255) NOT NULL,
-  `Tipo` enum('cliente','admin') NOT NULL DEFAULT 'cliente',
+  `Tipo` enum('cliente','admin','funcionario') NOT NULL DEFAULT 'cliente',
   `Telemovel` varchar(20) DEFAULT NULL,
   `NIF` char(9) DEFAULT NULL,
   `DataNascimento` date DEFAULT NULL,

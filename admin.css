@@ -579,6 +579,72 @@ body.admin-page {
   color: var(--admin-danger);
 }
 
+.admin-order-status.is-pedido,
+.admin-order-status.is-em_preparacao,
+.admin-order-status.is-a_entregar,
+.admin-payment-status.is-pendente {
+  background: #fff5d8;
+  color: #80621a;
+}
+
+.admin-order-status.is-entregue,
+.admin-payment-status.is-pago {
+  background: #e9f4ec;
+  color: #28613e;
+}
+
+.admin-order-status.is-cancelada,
+.admin-payment-status.is-falhado,
+.admin-payment-status.is-reembolsado {
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+}
+
+.admin-orders-table {
+  min-width: 1040px;
+}
+
+.admin-history-table {
+  min-width: 820px;
+}
+
+.admin-history-table th,
+.admin-history-table td {
+  white-space: normal;
+  vertical-align: top;
+}
+
+.admin-orders-table th,
+.admin-orders-table td {
+  white-space: normal;
+  vertical-align: top;
+}
+
+.admin-orders-table td:nth-child(1),
+.admin-orders-table td:nth-child(4),
+.admin-orders-table td:nth-child(5),
+.admin-orders-table td:nth-child(6) {
+  white-space: nowrap;
+}
+
+.admin-order-actions {
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+}
+
+.admin-order-actions form {
+  margin: 0;
+}
+
+.admin-order-actions .admin-primary-button,
+.admin-order-actions .admin-secondary-button {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .admin-image-manager {
   display: grid;
   gap: 10px;

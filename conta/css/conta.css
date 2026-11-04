@@ -294,6 +294,73 @@ a {
   line-height: 1.6;
 }
 
+.orders-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+.order-card {
+  padding: 18px;
+  border: 1px solid rgba(24, 53, 43, .12);
+  border-radius: 15px;
+  background: #fff;
+}
+.order-card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.order-card-heading > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.order-card-heading > div > strong {
+  overflow-wrap: anywhere;
+}
+.order-card-heading time,
+.order-card-delivery {
+  color: var(--muted);
+  font-size: .88rem;
+}
+.order-card-items {
+  margin: 13px 0;
+  color: var(--muted);
+  font-size: .92rem;
+  line-height: 1.5;
+}
+.order-card-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.order-status,
+.payment-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #fff5d8;
+  color: #80621a;
+  font-size: .78rem;
+  font-weight: 750;
+}
+.order-status-entregue,
+.payment-status-pago {
+  background: #e9f4ec;
+  color: #28613e;
+}
+.order-status-cancelada,
+.payment-status-falhado,
+.payment-status-reembolsado {
+  background: #fff0ec;
+  color: #a84330;
+}
+.order-card-delivery {
+  margin: 12px 0 0;
+}
+
 .perfil-main .account-card form:not(.gastos-periodo) {
   gap: 12px;
   margin-top: 26px;
@@ -1028,5 +1095,14 @@ a {
 
   .gastos-resumo {
     grid-template-columns: 1fr;
+  }
+
+  .order-card {
+    padding: 15px;
+  }
+
+  .order-card-heading {
+    flex-direction: column;
+    gap: 7px;
   }
 }

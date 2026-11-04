@@ -19,6 +19,10 @@ if (!$u) {
     header('Location: logout.php');
     exit;
 }
+if ($u['Tipo'] === 'funcionario') {
+    header('Location: ../admin.php#encomendas');
+    exit;
+}
 
 gastos_compras_preparar($pdo);
 $periodoGastos = isset($_GET['periodo']) && $_GET['periodo'] === 'semanal' ? 'semanal' : 'mensal';
@@ -303,6 +307,20 @@ $stmt = $pdo->prepare('SELECT * FROM Morada WHERE IDUtilizador = ? ORDER BY Pred
 $stmt->execute([$id]);
 $moradas = $stmt->fetchAll();
 
+$stmt = $pdo->prepare(
+    'SELECT e.NumeroEncomenda, e.Estado, e.EstadoPagamento, e.Total, e.DataCriacao, e.DataEntrega,
+            (
+                SELECT GROUP_CONCAT(CONCAT(ie.NomeProduto, \' x\', ie.Quantidade) SEPARATOR \', \')
+                FROM ItemEncomenda ie
+                WHERE ie.IDEncomenda = e.IDEncomenda
+            ) AS Artigos
+     FROM Encomenda e
+     WHERE e.IDUtilizador = ?
+     ORDER BY e.DataCriacao DESC, e.IDEncomenda DESC'
+);
+$stmt->execute([$id]);
+$encomendasUtilizador = $stmt->fetchAll();
+
 $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
 ?>
 <!DOCTYPE html>
@@ -311,7 +329,7 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>O meu perfil | Cantinho</title>
-  <link rel="stylesheet" href="css/conta.css?v=20261026225230">
+  <link rel="stylesheet" href="css/conta.css?v=20261104145000">
 </head>
 <body>
   <header class="account-header">
@@ -344,6 +362,57 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
     <?php if (!(int) $u['EmailVerificado']): ?>
       <div class="alert alert-aviso">O seu email ainda não está verificado.</div>
     <?php endif; ?>
+
+    <section class="account-card" id="encomendas">
+      <h2>As minhas encomendas</h2>
+      <p>Acompanhe o estado da entrega e do pagamento das suas encomendas.</p>
+      <?php if ($encomendasUtilizador): ?>
+        <div class="orders-list">
+          <?php foreach ($encomendasUtilizador as $encomenda): ?>
+            <?php
+              $estadosEncomenda = [
+                  'pedido' => 'Encomendado',
+                  'em_preparacao' => 'Em preparação',
+                  'a_entregar' => 'A entregar',
+                  'entregue' => 'Entregue',
+                  'cancelada' => 'Cancelada',
+              ];
+              $estadoPagamento = [
+                  'pendente' => 'Pagamento pendente',
+                  'pago' => 'Pago',
+                  'falhado' => 'Pagamento falhado',
+                  'reembolsado' => 'Reembolsado',
+              ];
+            ?>
+            <article class="order-card">
+              <div class="order-card-heading">
+                <div>
+                  <strong><?= e($encomenda['NumeroEncomenda']) ?></strong>
+                  <time datetime="<?= e(date('Y-m-d\TH:i:s', strtotime($encomenda['DataCriacao']))) ?>">
+                    Encomendada em <?= e(date('d/m/Y', strtotime($encomenda['DataCriacao']))) ?>
+                  </time>
+                </div>
+                <strong><?= number_format((float) $encomenda['Total'], 2, ',', '.') ?> €</strong>
+              </div>
+              <p class="order-card-items"><?= e($encomenda['Artigos'] ?? 'Artigos não disponíveis') ?></p>
+              <div class="order-card-statuses">
+                <span class="order-status order-status-<?= e($encomenda['Estado']) ?>">
+                  <?= e($estadosEncomenda[$encomenda['Estado']] ?? $encomenda['Estado']) ?>
+                </span>
+                <span class="payment-status payment-status-<?= e($encomenda['EstadoPagamento']) ?>">
+                  <?= e($estadoPagamento[$encomenda['EstadoPagamento']] ?? $encomenda['EstadoPagamento']) ?>
+                </span>
+              </div>
+              <?php if ($encomenda['DataEntrega']): ?>
+                <p class="order-card-delivery">Entregue em <?= e(date('d/m/Y H:i', strtotime($encomenda['DataEntrega']))) ?></p>
+              <?php endif; ?>
+            </article>
+          <?php endforeach; ?>
+        </div>
+      <?php else: ?>
+        <p class="gastos-vazio">Ainda não tem encomendas.</p>
+      <?php endif; ?>
+    </section>
 
     <!-- ===== Gastos ===== -->
     <section class="account-card" id="gastos">

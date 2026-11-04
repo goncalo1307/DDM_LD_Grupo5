@@ -3,7 +3,10 @@ require __DIR__ . '/ligacao.php';
 
 // Já está autenticado
 if (!empty($_SESSION['utilizador_id'])) {
-    header('Location: ../index.php');
+    $stmt = $pdo->prepare('SELECT Tipo FROM Utilizador WHERE IDUtilizador = ? AND Ativo = 1');
+    $stmt->execute([(int) $_SESSION['utilizador_id']]);
+    $tipoSessao = $stmt->fetchColumn();
+    header('Location: ' . ($tipoSessao === 'funcionario' ? '../admin.php#encomendas' : '../index.php'));
     exit;
 }
 
@@ -33,13 +36,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $erro = 'Email ou palavra-passe incorretos.';
         } elseif (!(int) $u['Ativo']) {
             $erro = 'Esta conta está desativada.';
+        } elseif ($u['Tipo'] === 'funcionario') {
+            $erro = 'Esta é uma conta exclusiva de funcionário. Entre pelo acesso de funcionário.';
         } else {
             session_regenerate_id(true);
 
             $_SESSION['utilizador_id']       = (int) $u['IDUtilizador'];
             $_SESSION['utilizador_nome']     = $u['Nome'];
             $_SESSION['utilizador_username'] = $u['Username'];
-            $_SESSION['utilizador_tipo']     = $u['Tipo']; // 'cliente' | 'admin'
+            $_SESSION['utilizador_tipo']     = $u['Tipo']; // 'cliente' | 'admin' | 'funcionario'
 
             // Atualiza hash se o algoritmo por defeito mudar no futuro
             if (password_needs_rehash($u['PasswordHash'], PASSWORD_DEFAULT)) {
@@ -117,6 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <button type="submit">Iniciar sessão</button>
       </form>
       <p class="account-switch">Ainda não tem conta? <a href="criar-conta.php">Criar conta</a></p>
+      <p class="account-switch">É funcionário? <a href="funcionario.php">Aceder à área de funcionário</a></p>
     </section>
   </main>
 </body>

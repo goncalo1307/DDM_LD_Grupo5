@@ -10,6 +10,18 @@ if (empty($_SESSION['utilizador_id'])) {
     exit;
 }
 
+$stmt = $pdo->prepare('SELECT Tipo, Ativo FROM Utilizador WHERE IDUtilizador = ? LIMIT 1');
+$stmt->execute([(int) $_SESSION['utilizador_id']]);
+$utilizadorSessao = $stmt->fetch();
+if (!$utilizadorSessao || !(int) $utilizadorSessao['Ativo']) {
+    header('Location: logout.php');
+    exit;
+}
+if ($utilizadorSessao['Tipo'] === 'funcionario') {
+    header('Location: ../admin.php#encomendas');
+    exit;
+}
+
 gastos_compras_preparar($pdo);
 listas_compras_preparar($pdo);
 $idUtilizador = (int) $_SESSION['utilizador_id'];

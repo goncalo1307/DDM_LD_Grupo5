@@ -30,9 +30,14 @@ $valorPesquisa = $paginaPesquisa && isset($query) ? (string) $query : '';
           </summary>
           <div class="user-menu-panel">
             <div class="user-menu-head">Olá, <strong><?= e($primeiroNome) ?></strong></div>
-            <a href="conta/perfil.php">O meu perfil</a>
-            <a href="conta/perfil.php#moradas">As minhas moradas</a>
-            <a href="conta/carrinho.php">O meu carrinho</a>
+            <?php if ($tipoUtilizador === 'funcionario'): ?>
+              <a href="admin.php#encomendas">Gestão de encomendas</a>
+            <?php else: ?>
+              <a href="conta/perfil.php">O meu perfil</a>
+              <a href="conta/perfil.php#encomendas">As minhas encomendas</a>
+              <a href="conta/perfil.php#moradas">As minhas moradas</a>
+              <a href="conta/carrinho.php">O meu carrinho</a>
+            <?php endif; ?>
             <a href="conta/logout.php" class="logout-link">Terminar sessão</a>
           </div>
         </details>
@@ -42,14 +47,18 @@ $valorPesquisa = $paginaPesquisa && isset($query) ? (string) $query : '';
         </a>
       <?php endif; ?>
 
-      <a class="icon-button cart-button" href="conta/carrinho.php" aria-label="Carrinho com <?= $totalCarrinho ?> artigos">
-        <svg class="svg" viewBox="0 0 24 24"><path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
-        <?php if ($totalCarrinho > 0): ?>
-          <span class="cart-count" id="cartCount"><?= $totalCarrinho ?></span>
-        <?php endif; ?>
-      </a>
+      <?php if (!$logado || $tipoUtilizador !== 'funcionario'): ?>
+        <a class="icon-button cart-button" href="conta/carrinho.php" aria-label="Carrinho com <?= $totalCarrinho ?> artigos">
+          <svg class="svg" viewBox="0 0 24 24"><path d="M3 4h2l2.4 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H7"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
+          <?php if ($totalCarrinho > 0): ?>
+            <span class="cart-count" id="cartCount"><?= $totalCarrinho ?></span>
+          <?php endif; ?>
+        </a>
+      <?php endif; ?>
       <?php if ($logado && $tipoUtilizador === 'admin'): ?>
         <a class="admin-access-button" href="admin.php">Admin</a>
+      <?php elseif ($logado && $tipoUtilizador === 'funcionario'): ?>
+        <a class="admin-access-button" href="admin.php">Encomendas</a>
       <?php endif; ?>
     </div>
     <nav class="mobile-nav" id="mobileNav">
@@ -57,8 +66,13 @@ $valorPesquisa = $paginaPesquisa && isset($query) ? (string) $query : '';
       <a href="index.php#categorias">Produtos</a>
       <a href="index.php#sobre">Quem somos</a>
       <?php if ($logado): ?>
-        <a href="conta/perfil.php">O meu perfil (<?= e($primeiroNome) ?>)</a>
-        <a href="conta/carrinho.php">O meu carrinho (<?= $totalCarrinho ?>)</a>
+        <?php if ($tipoUtilizador === 'funcionario'): ?>
+          <a href="admin.php">Gestão de encomendas</a>
+        <?php else: ?>
+          <a href="conta/perfil.php">O meu perfil (<?= e($primeiroNome) ?>)</a>
+          <a href="conta/perfil.php#encomendas">As minhas encomendas</a>
+          <a href="conta/carrinho.php">O meu carrinho (<?= $totalCarrinho ?>)</a>
+        <?php endif; ?>
         <a href="conta/logout.php">Terminar sessão</a>
       <?php else: ?>
         <a href="conta/conta.php">Iniciar sessão</a>

@@ -10,8 +10,10 @@ if (empty($_SESSION['utilizador_id'])) {
 $stmt = $pdo->prepare('SELECT Tipo, Ativo FROM Utilizador WHERE IDUtilizador = ? LIMIT 1');
 $stmt->execute([(int) $_SESSION['utilizador_id']]);
 $utilizador = $stmt->fetch();
+$isAdmin = $utilizador && $utilizador['Tipo'] === 'admin';
+$isFuncionario = $utilizador && $utilizador['Tipo'] === 'funcionario';
 
-if (!$utilizador || !(int) $utilizador['Ativo'] || $utilizador['Tipo'] !== 'admin') {
+if (!$utilizador || !(int) $utilizador['Ativo'] || (!$isAdmin && !$isFuncionario)) {
     http_response_code(403);
     ?>
     <!DOCTYPE html>
@@ -25,7 +27,7 @@ if (!$utilizador || !(int) $utilizador['Ativo'] || $utilizador['Tipo'] !== 'admi
     <body class="admin-page">
       <main class="admin-shell">
         <h1>Acesso recusado</h1>
-        <p>Esta área está disponível apenas para administradores.</p>
+        <p>Esta área está disponível apenas para administradores e funcionários autorizados.</p>
         <a class="admin-secondary-button" href="index.php">Voltar à loja</a>
       </main>
     </body>
@@ -83,6 +85,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $acao = $_POST['acao'] ?? '';
 
         try {
+            if (!$isAdmin && !in_array($acao, ['marcar_encomenda_entregue', 'marcar_encomenda_paga'], true)) {
+                http_response_code(403);
+                throw new InvalidArgumentException('A sua conta só pode gerir estados de encomendas.');
+            }
+
             if ($acao === 'guardar_produto') {
                 $idProdutoRaw = trim($_POST['idProduto'] ?? '');
                 if ($idProdutoRaw === '') {
@@ -416,6 +423,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
+            if ($acao === 'criar_funcionario') {
+                $nome = trim($_POST['nome'] ?? '');
+                $username = trim($_POST['username'] ?? '');
+                $email = mb_strtolower(trim($_POST['email'] ?? ''));
+                $password = $_POST['password'] ?? '';
+
+                if ($nome === '' || mb_strlen($nome) > 100) {
+                    throw new InvalidArgumentException('Indique um nome até 100 caracteres.');
+                }
+                if (!preg_match('/^[A-Za-z0-9_.]{3,50}$/', $username)) {
+                    throw new InvalidArgumentException('O username deve ter 3 a 50 caracteres (letras, números, _ e .).');
+                }
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 255) {
+                    throw new InvalidArgumentException('Indique um email válido.');
+                }
+                if (strlen($password) < 8 || strlen($password) > 72) {
+                    throw new InvalidArgumentException('A palavra-passe deve ter entre 8 e 72 caracteres.');
+                }
+
+                $stmt = $pdo->prepare('SELECT COUNT(*) FROM Utilizador WHERE Username = ? OR Email = ?');
+                $stmt->execute([$username, $email]);
+                if ((int) $stmt->fetchColumn() > 0) {
+                    throw new InvalidArgumentException('Esse username ou email já está em uso.');
+                }
+
+                $pdo->prepare(
+                    'INSERT INTO Utilizador (Nome, Username, Email, PasswordHash, Tipo, Ativo)
+                     VALUES (?, ?, ?, ?, \'funcionario\', 1)'
+                )->execute([$nome, $username, $email, password_hash($password, PASSWORD_DEFAULT)]);
+                header('Location: admin.php?ok=funcionario#funcionarios');
+                exit;
+            }
+
             if ($acao === 'desativar_produto') {
                 $idProduto = filter_input(INPUT_POST, 'idProduto', FILTER_VALIDATE_INT);
                 if (!$idProduto) {
@@ -427,6 +467,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      WHERE IDProduto = ?'
                 )->execute([(int) $_SESSION['utilizador_id'], $idProduto]);
                 header('Location: admin.php?ok=desativado');
+                exit;
+            }
+
+            if ($acao === 'marcar_encomenda_entregue' || $acao === 'marcar_encomenda_paga') {
+                $idEncomendaRaw = trim($_POST['idEncomenda'] ?? '');
+                if (!ctype_digit($idEncomendaRaw) || (int) $idEncomendaRaw < 1) {
+                    throw new InvalidArgumentException('Encomenda inválida.');
+                }
+                $idEncomenda = (int) $idEncomendaRaw;
+
+                $pdo->beginTransaction();
+                $stmt = $pdo->prepare(
+                    'SELECT Estado, EstadoPagamento
+                     FROM Encomenda
+                     WHERE IDEncomenda = ?
+                     FOR UPDATE'
+                );
+                $stmt->execute([$idEncomenda]);
+                $encomenda = $stmt->fetch();
+                if (!$encomenda) {
+                    throw new InvalidArgumentException('A encomenda já não existe.');
+                }
+
+                if ($acao === 'marcar_encomenda_entregue') {
+                    if ($encomenda['Estado'] === 'cancelada') {
+                        throw new InvalidArgumentException('Não é possível marcar uma encomenda cancelada como entregue.');
+                    }
+                    if ($encomenda['Estado'] === 'entregue') {
+                        throw new InvalidArgumentException('Esta encomenda já está marcada como entregue.');
+                    }
+                    $pdo->prepare(
+                        'UPDATE Encomenda
+                         SET Estado = \'entregue\', DataEntrega = NOW(), IDAlteradoPor = ?
+                         WHERE IDEncomenda = ?'
+                    )->execute([(int) $_SESSION['utilizador_id'], $idEncomenda]);
+                    $pdo->prepare(
+                        'INSERT INTO HistoricoEstadoEncomenda
+                            (IDEncomenda, EstadoAnterior, EstadoNovo, IDUtilizador, Nota)
+                         VALUES (?, ?, \'entregue\', ?, ?)'
+                    )->execute([
+                        $idEncomenda,
+                        $encomenda['Estado'],
+                        (int) $_SESSION['utilizador_id'],
+                        'Encomenda marcada como entregue no painel de administração.',
+                    ]);
+                    $resultadoEncomenda = 'encomenda_entregue';
+                } else {
+                    if ($encomenda['EstadoPagamento'] !== 'pendente') {
+                        throw new InvalidArgumentException('Só é possível marcar como pago um pagamento pendente.');
+                    }
+                    $pdo->prepare(
+                        'UPDATE Encomenda
+                         SET EstadoPagamento = \'pago\', DataPagamento = NOW(), IDAlteradoPor = ?
+                         WHERE IDEncomenda = ?'
+                    )->execute([(int) $_SESSION['utilizador_id'], $idEncomenda]);
+                    $pdo->prepare(
+                        'INSERT INTO HistoricoEstadoEncomenda
+                            (IDEncomenda, EstadoAnterior, EstadoNovo, IDUtilizador, Nota)
+                         VALUES (?, ?, ?, ?, ?)'
+                    )->execute([
+                        $idEncomenda,
+                        $encomenda['Estado'],
+                        $encomenda['Estado'],
+                        (int) $_SESSION['utilizador_id'],
+                        'Pagamento confirmado manualmente.',
+                    ]);
+                    $resultadoEncomenda = 'encomenda_paga';
+                }
+
+                $pdo->commit();
+                header('Location: admin.php?ok=' . $resultadoEncomenda . '#encomendas');
                 exit;
             }
 
@@ -488,8 +599,57 @@ $mensagens = [
     'categoria_eliminada' => 'Categoria eliminada com sucesso.',
     'fornecedor' => 'Fornecedor criado com sucesso.',
     'desativado' => 'Produto desativado.',
+    'encomenda_entregue' => 'Encomenda marcada como entregue.',
+    'encomenda_paga' => 'Pagamento da encomenda confirmado.',
+    'funcionario' => 'Conta de funcionário criada com sucesso.',
 ];
 $mensagem = $mensagens[$_GET['ok'] ?? ''] ?? '';
+
+$totalEncomendas = (int) $pdo->query('SELECT COUNT(*) FROM Encomenda')->fetchColumn();
+$totalHistorico = $isAdmin
+    ? (int) $pdo->query('SELECT COUNT(*) FROM HistoricoEstadoEncomenda')->fetchColumn()
+    : 0;
+$totalPaginasHistorico = max(1, (int) ceil($totalHistorico / 15));
+$paginaHistorico = isset($_GET['pagina_historico']) && is_string($_GET['pagina_historico'])
+    && ctype_digit($_GET['pagina_historico'])
+    ? max(1, min((int) $_GET['pagina_historico'], $totalPaginasHistorico))
+    : 1;
+$historicoEncomendas = $isAdmin
+    ? $pdo->query(
+        'SELECT h.IDHistorico, h.EstadoAnterior, h.EstadoNovo, h.Nota, h.DataAlteracao,
+                e.NumeroEncomenda, u.Nome AS NomeResponsavel
+         FROM HistoricoEstadoEncomenda h
+         INNER JOIN Encomenda e ON e.IDEncomenda = h.IDEncomenda
+         LEFT JOIN Utilizador u ON u.IDUtilizador = h.IDUtilizador
+         ORDER BY h.DataAlteracao DESC, h.IDHistorico DESC
+         LIMIT 15 OFFSET ' . (($paginaHistorico - 1) * 15)
+    )->fetchAll()
+    : [];
+$totalFuncionarios = $isAdmin
+    ? (int) $pdo->query("SELECT COUNT(*) FROM Utilizador WHERE Tipo = 'funcionario'")->fetchColumn()
+    : 0;
+$funcionarios = $isAdmin
+    ? $pdo->query(
+        "SELECT IDUtilizador, Nome, Username, Email, Ativo
+         FROM Utilizador
+         WHERE Tipo = 'funcionario'
+         ORDER BY Nome, IDUtilizador"
+    )->fetchAll()
+    : [];
+$encomendas = $pdo->query(
+    'SELECT e.IDEncomenda, e.NumeroEncomenda, e.Estado, e.EstadoPagamento, e.MetodoPagamento,
+            e.Total, e.DataCriacao, e.DataEntrega, e.EntregaNome, e.EntregaTelemovel,
+            e.EntregaMorada, e.EntregaCodigoPostal, e.EntregaLocalidade,
+            u.Nome AS NomeUtilizador, u.Email AS EmailUtilizador,
+            (
+                SELECT GROUP_CONCAT(CONCAT(ie.NomeProduto, \' x\', ie.Quantidade) SEPARATOR \', \')
+                FROM ItemEncomenda ie
+                WHERE ie.IDEncomenda = e.IDEncomenda
+            ) AS Artigos
+     FROM Encomenda e
+     INNER JOIN Utilizador u ON u.IDUtilizador = e.IDUtilizador
+     ORDER BY e.DataCriacao DESC, e.IDEncomenda DESC'
+)->fetchAll();
 
 $pesquisaProdutos = isset($_GET['pesquisa_produtos']) && is_string($_GET['pesquisa_produtos'])
     ? trim($_GET['pesquisa_produtos'])
@@ -827,15 +987,20 @@ function admin_csrf(): string {
     <div class="admin-heading">
       <div>
         <p class="eyebrow">Área reservada</p>
-        <h1>Administração</h1>
-        <p>Gerir produtos, categorias e fornecedores da loja.</p>
+        <h1><?= $isAdmin ? 'Administração' : 'Gestão de encomendas' ?></h1>
+        <p><?= $isAdmin ? 'Gerir produtos, categorias, fornecedores e encomendas da loja.' : 'Consultar encomendas e atualizar o estado de entrega e pagamento.' ?></p>
       </div>
     </div>
 
     <nav class="admin-nav" aria-label="Secções de administração">
-      <a href="#produtos">Produtos <span><?= $totalProdutos ?></span></a>
-      <a href="#categorias">Categorias <span><?= count($categorias) ?></span></a>
-      <a href="#fornecedores">Fornecedores <span><?= $totalFornecedores ?></span></a>
+      <a href="#encomendas">Encomendas <span><?= $totalEncomendas ?></span></a>
+      <?php if ($isAdmin): ?>
+        <a href="#historico">Histórico <span><?= $totalHistorico ?></span></a>
+        <a href="#produtos">Produtos <span><?= $totalProdutos ?></span></a>
+        <a href="#categorias">Categorias <span><?= count($categorias) ?></span></a>
+        <a href="#fornecedores">Fornecedores <span><?= $totalFornecedores ?></span></a>
+        <a href="#funcionarios">Funcionários <span><?= $totalFuncionarios ?></span></a>
+      <?php endif; ?>
     </nav>
 
     <?php if ($mensagem): ?>
@@ -844,6 +1009,153 @@ function admin_csrf(): string {
     <?php if ($erro): ?>
       <div class="admin-alert admin-alert-error" role="alert"><?= e($erro) ?></div>
     <?php endif; ?>
+
+    <section class="admin-section" id="encomendas">
+      <div class="admin-section-heading">
+        <div>
+          <h2>Encomendas</h2>
+          <p>Consulte as encomendas dos clientes e atualize a entrega e o pagamento.</p>
+        </div>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table admin-orders-table">
+          <thead>
+            <tr>
+              <th>Encomenda</th>
+              <th>Cliente e entrega</th>
+              <th>Artigos</th>
+              <th>Total</th>
+              <th>Estado</th>
+              <th>Pagamento</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($encomendas as $encomenda): ?>
+              <?php
+                $estadosEncomenda = [
+                    'pedido' => 'Encomendado',
+                    'em_preparacao' => 'Em preparação',
+                    'a_entregar' => 'A entregar',
+                    'entregue' => 'Entregue',
+                    'cancelada' => 'Cancelada',
+                ];
+                $estadoPagamento = [
+                    'pendente' => 'Pendente',
+                    'pago' => 'Pago',
+                    'falhado' => 'Falhado',
+                    'reembolsado' => 'Reembolsado',
+                ];
+              ?>
+              <tr>
+                <td>
+                  <strong><?= e($encomenda['NumeroEncomenda']) ?></strong>
+                  <small><?= e(date('d/m/Y H:i', strtotime($encomenda['DataCriacao']))) ?></small>
+                </td>
+                <td>
+                  <strong><?= e($encomenda['EntregaNome']) ?></strong>
+                  <small><?= e($encomenda['EmailUtilizador']) ?><?= $encomenda['EntregaTelemovel'] ? ' · ' . e($encomenda['EntregaTelemovel']) : '' ?></small>
+                  <small><?= e($encomenda['EntregaMorada']) ?>, <?= e($encomenda['EntregaCodigoPostal']) ?> <?= e($encomenda['EntregaLocalidade']) ?></small>
+                </td>
+                <td><?= e($encomenda['Artigos'] ?? 'Sem artigos registados') ?></td>
+                <td><?= number_format((float) $encomenda['Total'], 2, ',', '.') ?> €</td>
+                <td><span class="admin-status admin-order-status is-<?= e($encomenda['Estado']) ?>"><?= e($estadosEncomenda[$encomenda['Estado']] ?? $encomenda['Estado']) ?></span></td>
+                <td>
+                  <span class="admin-status admin-payment-status is-<?= e($encomenda['EstadoPagamento']) ?>"><?= e($estadoPagamento[$encomenda['EstadoPagamento']] ?? $encomenda['EstadoPagamento']) ?></span>
+                  <small><?= e($encomenda['MetodoPagamento']) ?></small>
+                </td>
+                <td>
+                  <div class="admin-order-actions">
+                    <?php if ($encomenda['Estado'] !== 'entregue' && $encomenda['Estado'] !== 'cancelada'): ?>
+                      <form method="post" action="admin.php#encomendas">
+                        <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                        <input type="hidden" name="acao" value="marcar_encomenda_entregue">
+                        <input type="hidden" name="idEncomenda" value="<?= (int) $encomenda['IDEncomenda'] ?>">
+                        <button class="admin-primary-button" type="submit">Marcar entregue</button>
+                      </form>
+                    <?php endif; ?>
+                    <?php if ($encomenda['EstadoPagamento'] === 'pendente'): ?>
+                      <form method="post" action="admin.php#encomendas" onsubmit="return confirm('Confirmar que o pagamento desta encomenda foi recebido?');">
+                        <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                        <input type="hidden" name="acao" value="marcar_encomenda_paga">
+                        <input type="hidden" name="idEncomenda" value="<?= (int) $encomenda['IDEncomenda'] ?>">
+                        <button class="admin-secondary-button" type="submit">Marcar pago</button>
+                      </form>
+                    <?php endif; ?>
+                    <?php if ($encomenda['Estado'] === 'entregue' && $encomenda['EstadoPagamento'] !== 'pendente'): ?>
+                      <small><?= $encomenda['DataEntrega'] ? 'Entregue em ' . e(date('d/m/Y H:i', strtotime($encomenda['DataEntrega']))) : 'Estado atualizado' ?></small>
+                    <?php endif; ?>
+                  </div>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+            <?php if (!$encomendas): ?>
+              <tr><td colspan="7">Ainda não existem encomendas.</td></tr>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <?php if ($isAdmin): ?>
+    <section class="admin-section" id="historico">
+      <div class="admin-section-heading">
+        <div>
+          <h2>Histórico de encomendas</h2>
+          <p>Consulte as alterações de estado e as confirmações de pagamento realizadas pela equipa.</p>
+        </div>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table admin-history-table">
+          <thead>
+            <tr><th>Data</th><th>Encomenda</th><th>Alteração</th><th>Nota</th><th>Responsável</th></tr>
+          </thead>
+          <tbody>
+            <?php foreach ($historicoEncomendas as $evento): ?>
+              <?php
+                $nomesEstado = [
+                    'pedido' => 'Encomendado',
+                    'em_preparacao' => 'Em preparação',
+                    'a_entregar' => 'A entregar',
+                    'entregue' => 'Entregue',
+                    'cancelada' => 'Cancelada',
+                ];
+                $alteracaoEstado = $evento['EstadoAnterior'] === null
+                    ? 'Encomenda criada'
+                    : ($nomesEstado[$evento['EstadoAnterior']] ?? $evento['EstadoAnterior'])
+                        . ' → ' . ($nomesEstado[$evento['EstadoNovo']] ?? $evento['EstadoNovo']);
+              ?>
+              <tr>
+                <td><?= e(date('d/m/Y H:i', strtotime($evento['DataAlteracao']))) ?></td>
+                <td><?= e($evento['NumeroEncomenda']) ?></td>
+                <td><?= e($alteracaoEstado) ?></td>
+                <td><?= e($evento['Nota'] ?? '') ?></td>
+                <td><?= e($evento['NomeResponsavel'] ?? 'Sistema') ?></td>
+              </tr>
+            <?php endforeach; ?>
+            <?php if (!$historicoEncomendas): ?>
+              <tr><td colspan="5">Ainda não há alterações registadas.</td></tr>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+      <?php if ($totalPaginasHistorico > 1): ?>
+        <nav class="admin-pagination" aria-label="Paginação do histórico">
+          <?php if ($paginaHistorico > 1): ?>
+            <a href="<?= e(admin_url_paginacao([], 'pagina_historico', $paginaHistorico - 1)) ?>#historico" aria-label="Página anterior">‹</a>
+          <?php endif; ?>
+          <?php for ($pagina = max(1, $paginaHistorico - 2); $pagina <= min($totalPaginasHistorico, $paginaHistorico + 2); $pagina++): ?>
+            <a href="<?= e(admin_url_paginacao([], 'pagina_historico', $pagina)) ?>#historico"
+               class="<?= $pagina === $paginaHistorico ? 'is-current' : '' ?>"
+               <?= $pagina === $paginaHistorico ? 'aria-current="page"' : '' ?>><?= $pagina ?></a>
+          <?php endfor; ?>
+          <?php if ($paginaHistorico < $totalPaginasHistorico): ?>
+            <a href="<?= e(admin_url_paginacao([], 'pagina_historico', $paginaHistorico + 1)) ?>#historico" aria-label="Página seguinte">›</a>
+          <?php endif; ?>
+          <span>Página <?= $paginaHistorico ?> de <?= $totalPaginasHistorico ?></span>
+        </nav>
+      <?php endif; ?>
+    </section>
 
     <section class="admin-section" id="produtos">
       <div class="admin-section-heading">
@@ -1254,6 +1566,56 @@ function admin_csrf(): string {
         </nav>
       <?php endif; ?>
     </section>
+
+    <section class="admin-section" id="funcionarios">
+      <div class="admin-section-heading">
+        <div>
+          <h2>Funcionários</h2>
+          <p>Crie contas que só podem consultar e atualizar encomendas.</p>
+        </div>
+      </div>
+      <form class="admin-form admin-form-featured" method="post" action="admin.php#funcionarios">
+        <?= admin_csrf() ?>
+        <input type="hidden" name="acao" value="criar_funcionario">
+        <div class="admin-form-grid">
+          <label>Nome *
+            <input name="nome" maxlength="100" required>
+          </label>
+          <label>Username *
+            <input name="username" minlength="3" maxlength="50" pattern="[A-Za-z0-9_.]+" required>
+          </label>
+          <label>Email *
+            <input name="email" type="email" maxlength="255" required>
+          </label>
+          <label>Palavra-passe inicial *
+            <input name="password" type="password" minlength="8" maxlength="72" autocomplete="new-password" required>
+          </label>
+        </div>
+        <div class="admin-form-actions">
+          <button class="admin-primary-button" type="submit">Criar conta de funcionário</button>
+        </div>
+      </form>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Funcionário</th><th>Username</th><th>Email</th><th>Conta</th></tr></thead>
+          <tbody>
+            <?php foreach ($funcionarios as $funcionario): ?>
+              <tr>
+                <td><?= e($funcionario['Nome']) ?></td>
+                <td><?= e($funcionario['Username']) ?></td>
+                <td><?= e($funcionario['Email']) ?></td>
+                <td><span class="admin-status <?= (int) $funcionario['Ativo'] ? 'is-active' : 'is-inactive' ?>"><?= (int) $funcionario['Ativo'] ? 'Ativa' : 'Inativa' ?></span></td>
+              </tr>
+            <?php endforeach; ?>
+            <?php if (!$funcionarios): ?>
+              <tr><td colspan="4">Ainda não há contas de funcionário.</td></tr>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <?php endif; ?>
   </main>
   <script src="javascript.js"></script>
 </body>

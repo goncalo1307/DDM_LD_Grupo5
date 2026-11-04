@@ -23,6 +23,10 @@ A navegação e o rodapé das páginas da loja são reutilizados a partir de `co
 
 O perfil usa `GastoCompra` para apresentar total, compras recentes e média mensal ou semanal. Também permite exportar os totais por mês ou semana e o número de compras em CSV. O checkout cria um registo de gasto ligado à referência da encomenda.
 
+## Encomendas e entregas
+
+O painel lista as encomendas com o número, cliente, artigos, estado e pagamento. Administradores podem gerir a loja e criar contas de funcionário; funcionários entram em `conta/funcionario.php` e só podem consultar encomendas e atualizar entrega/pagamento. Essas contas não podem entrar pelo login normal de cliente, consultar o perfil de cliente ou usar o carrinho. O administrador tem uma secção de histórico paginada, com alterações de estado e confirmações manuais de pagamento. Os clientes consultam os estados na secção “As minhas encomendas” do perfil. Para suportar o papel `funcionario`, execute `migracao_funcionario.sql` na base `o_cantinho` através do separador SQL do phpMyAdmin. Os pagamentos continuam a ser confirmados manualmente, pois não existe integração com gateways de pagamento.
+
 ## Listas de compras predefinidas
 
 No checkout, cada utilizador pode guardar a compra como lista predefinida. Na página de um produto, o botão para adicionar a uma lista abre uma janela onde pode escolher uma lista existente ou criar uma nova. Na loja e nos resultados de pesquisa, também pode adicionar o produto ao carrinho e a uma lista no mesmo passo. No carrinho pode ajustar quantidades, remover produtos e adicionar uma lista inteira ao carrinho, com validação do stock. As tabelas `ListaCompra` e `ItemListaCompra` são criadas automaticamente na primeira utilização da funcionalidade; o utilizador da base de dados precisa de permissões para criar tabelas.
