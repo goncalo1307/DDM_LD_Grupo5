@@ -9,7 +9,7 @@ A tabela `ProdutoImagem`, usada para guardar a galeria, é criada automaticament
 
 ## Categorias
 
-As categorias são ordenadas automaticamente por nome, por ordem alfabética, sem opção de ordenação manual. Uma categoria só pode ser eliminada quando não tem produtos nem subcategorias associados. Reatribua os produtos ou subcategorias antes de tentar eliminá-la.
+As categorias são ordenadas automaticamente por nome, por ordem alfabética, sem opção de ordenação manual. Na loja, o menu Produtos permite escolher uma categoria e, quando existem, as respetivas subcategorias para filtrar o catálogo. Uma categoria só pode ser eliminada quando não tem produtos nem subcategorias associados. Reatribua os produtos ou subcategorias antes de tentar eliminá-la.
 
 ## Fornecedores
 

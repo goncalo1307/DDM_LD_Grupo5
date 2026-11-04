@@ -35,14 +35,50 @@ if ($logado) {
 $feedbackCarrinho = $_SESSION['feedback_carrinho'] ?? null;
 unset($_SESSION['feedback_carrinho']);
 
-$stmt = $pdo->query(
-    'SELECT IDProduto, Nome, Marca, Preco, PrecoPromocional,
-            Unidade, Imagem, Destaque
-     FROM Produto
+$categoriasFiltro = $pdo->query(
+    'SELECT IDCategoria, IDCategoriaPai, Nome
+     FROM Categoria
      WHERE Ativo = 1
-     ORDER BY Destaque DESC, Nome ASC'
-);
-$produtos = $stmt->fetchAll();
+     ORDER BY Nome ASC, IDCategoria ASC'
+)->fetchAll();
+$categoriasPorPai = [];
+foreach ($categoriasFiltro as $categoriaFiltro) {
+    $categoriasPorPai[$categoriaFiltro['IDCategoriaPai'] ?? 0][] = $categoriaFiltro;
+}
+
+$categoriaSelecionada = null;
+$idCategoria = null;
+if (isset($_GET['categoria'])) {
+    $idCategoriaRaw = is_string($_GET['categoria']) ? $_GET['categoria'] : '';
+    if (!ctype_digit($idCategoriaRaw) || (int) $idCategoriaRaw < 1) {
+        http_response_code(400);
+    } else {
+        $stmt = $pdo->prepare('SELECT IDCategoria, Nome FROM Categoria WHERE IDCategoria = ? AND Ativo = 1');
+        $stmt->execute([(int) $idCategoriaRaw]);
+        $categoriaSelecionada = $stmt->fetch() ?: null;
+        if ($categoriaSelecionada) {
+            $idCategoria = (int) $categoriaSelecionada['IDCategoria'];
+        } else {
+            http_response_code(404);
+        }
+    }
+}
+
+$sqlProdutos = 'SELECT p.IDProduto, p.Nome, p.Marca, p.Preco, p.PrecoPromocional,
+                       p.Unidade, p.Imagem, p.Destaque
+                FROM Produto p
+                JOIN Categoria c ON c.IDCategoria = p.IDCategoria
+                WHERE p.Ativo = 1 AND c.Ativo = 1';
+if ($idCategoria !== null) {
+    $stmt = $pdo->prepare($sqlProdutos . ' AND p.IDCategoria = ? ORDER BY p.Destaque DESC, p.Nome ASC');
+    $stmt->execute([$idCategoria]);
+    $produtos = $stmt->fetchAll();
+} elseif (isset($_GET['categoria'])) {
+    $produtos = [];
+} else {
+    $stmt = $pdo->query($sqlProdutos . ' ORDER BY p.Destaque DESC, p.Nome ASC');
+    $produtos = $stmt->fetchAll();
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-PT">
@@ -83,8 +119,47 @@ $produtos = $stmt->fetchAll();
       <div class="section-heading">
         <div>
           <p class="section-kicker">Produtos selecionados para si</p>
-          <h2>Tudo o que precisa</h2>
+          <h2><?= $categoriaSelecionada ? e((string) $categoriaSelecionada['Nome']) : 'Tudo o que precisa' ?></h2>
         </div>
+        <?php if ($categoriaSelecionada): ?>
+          <a class="category-filter-reset" href="index.php#categorias">Ver todos os produtos</a>
+        <?php endif; ?>
+      </div>
+      <div class="catalog-filter">
+        <div class="catalog-filter-copy">
+          <span class="catalog-filter-icon" aria-hidden="true">
+            <svg class="svg" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="7" cy="6" r="1"/><circle cx="17" cy="12" r="1"/><circle cx="10" cy="18" r="1"/></svg>
+          </span>
+          <span><strong>À procura de algo específico?</strong><small>Explore o catálogo por categoria</small></span>
+        </div>
+        <details class="catalog-filter-menu">
+          <summary>
+            <span>Produtos</span>
+            <svg class="svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </summary>
+          <div class="catalog-filter-panel">
+            <a class="catalog-filter-all" href="index.php#categorias">Ver todos os produtos</a>
+            <?php foreach ($categoriasPorPai[0] ?? [] as $categoriaFiltro): ?>
+              <?php $subcategoriasFiltro = $categoriasPorPai[$categoriaFiltro['IDCategoria']] ?? []; ?>
+              <?php if ($subcategoriasFiltro): ?>
+                <details class="catalog-filter-category">
+                  <summary><?= e($categoriaFiltro['Nome']) ?><span aria-hidden="true">+</span></summary>
+                  <div class="catalog-filter-subcategories">
+                    <?php foreach ($subcategoriasFiltro as $subcategoriaFiltro): ?>
+                      <a href="index.php?categoria=<?= (int) $subcategoriaFiltro['IDCategoria'] ?>#categorias">
+                        <?= e($subcategoriaFiltro['Nome']) ?><span aria-hidden="true">›</span>
+                      </a>
+                    <?php endforeach; ?>
+                  </div>
+                </details>
+              <?php else: ?>
+                <a class="catalog-filter-category-link" href="index.php?categoria=<?= (int) $categoriaFiltro['IDCategoria'] ?>#categorias">
+                  <?= e($categoriaFiltro['Nome']) ?><span aria-hidden="true">›</span>
+                </a>
+              <?php endif; ?>
+            <?php endforeach; ?>
+          </div>
+        </details>
       </div>
       <div class="product-grid" id="productGrid">
         <?php foreach ($produtos as $produto):
@@ -149,7 +224,9 @@ $produtos = $stmt->fetchAll();
       </div>
       <div class="empty" id="emptyMessage">Não foram encontrados produtos. Experimente outra pesquisa.</div>
       <?php if (!$produtos): ?>
-        <div class="empty empty-visible">Ainda não existem produtos disponíveis.</div>
+        <div class="empty empty-visible">
+          <?= $categoriaSelecionada ? 'Ainda não existem produtos nesta categoria.' : 'Ainda não existem produtos disponíveis.' ?>
+        </div>
       <?php endif; ?>
     </section>
   </main>

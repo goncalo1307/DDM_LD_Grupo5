@@ -401,6 +401,198 @@ h1 {
   margin-bottom: 30px;
 }
 
+.category-filter-reset {
+  color: var(--green);
+  font-size: 14px;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.catalog-filter {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: -8px 0 26px;
+  padding: 14px 16px;
+  border: 1px solid rgba(24, 53, 43, .08);
+  border-radius: 18px;
+  background: linear-gradient(110deg, #f3f7ed, #fff9db);
+}
+
+.catalog-filter-copy {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.catalog-filter-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border-radius: 13px;
+  background: #fff;
+  color: var(--green);
+  box-shadow: 0 3px 10px rgba(24, 53, 43, .07);
+}
+
+.catalog-filter-icon .svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.catalog-filter-copy strong,
+.catalog-filter-copy small {
+  display: block;
+}
+
+.catalog-filter-copy strong {
+  color: var(--green);
+  font-size: 13px;
+}
+
+.catalog-filter-copy small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.catalog-filter-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.catalog-filter-menu > summary {
+  display: flex;
+  min-width: 154px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--green);
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 750;
+  list-style: none;
+  box-shadow: 0 5px 13px rgba(24, 53, 43, .16);
+  transition: background .18s, transform .18s, box-shadow .18s;
+}
+
+.catalog-filter-menu > summary::-webkit-details-marker,
+.catalog-filter-category > summary::-webkit-details-marker {
+  display: none;
+}
+
+.catalog-filter-menu > summary:hover {
+  transform: translateY(-1px);
+  background: #254c3c;
+  box-shadow: 0 8px 18px rgba(24, 53, 43, .2);
+}
+
+.catalog-filter-menu > summary .svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  transition: transform .18s;
+}
+
+.catalog-filter-menu[open] > summary .svg {
+  transform: rotate(180deg);
+}
+
+.catalog-filter-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(330px, calc(100vw - 40px));
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid rgba(24, 53, 43, .1);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 16px 38px rgba(24, 53, 43, .18);
+}
+
+.catalog-filter-panel a,
+.catalog-filter-category > summary {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--green);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.catalog-filter-panel a:hover,
+.catalog-filter-category > summary:hover,
+.catalog-filter-category[open] > summary {
+  background: #f1f6ed;
+}
+
+.catalog-filter-panel .catalog-filter-all {
+  margin-bottom: 5px;
+  border-bottom: 1px solid rgba(24, 53, 43, .08);
+  border-radius: 0;
+  color: var(--orange);
+  font-weight: 800;
+}
+
+.catalog-filter-category > summary span,
+.catalog-filter-category-link span,
+.catalog-filter-subcategories a span {
+  color: #829287;
+  font-size: 17px;
+}
+
+.catalog-filter-category[open] > summary span {
+  transform: rotate(45deg);
+}
+
+.catalog-filter-subcategories {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 5px 12px;
+  padding-left: 10px;
+  border-left: 2px solid #e8eee4;
+}
+
+.catalog-filter-subcategories a {
+  min-height: 36px;
+  padding: 7px 10px;
+  color: #53675b;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.catalog-filter-subcategories a:hover {
+  color: var(--green);
+}
+
 .section-kicker {
   margin-bottom: 8px;
   color: var(--orange);
@@ -1407,6 +1599,23 @@ footer p {
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .catalog-filter {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 13px;
+    padding: 14px;
+  }
+
+  .catalog-filter-menu > summary {
+    width: 100%;
+  }
+
+  .catalog-filter-panel {
+    right: auto;
+    left: 0;
+    width: min(100%, calc(100vw - 64px));
   }
 
   .categories {
