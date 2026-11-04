@@ -54,7 +54,6 @@ CREATE TABLE `categoria` (
   `Nome` varchar(80) NOT NULL,
   `Slug` varchar(100) NOT NULL,
   `Descricao` varchar(255) DEFAULT NULL,
-  `Ordem` smallint(6) NOT NULL DEFAULT 0,
   `Ativo` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -62,21 +61,21 @@ CREATE TABLE `categoria` (
 -- Extraindo dados da tabela `categoria`
 --
 
-INSERT INTO `categoria` (`IDCategoria`, `IDCategoriaPai`, `Nome`, `Slug`, `Descricao`, `Ordem`, `Ativo`) VALUES
-(1, NULL, 'Frutas e Legumes', 'frutas-e-legumes', NULL, 1, 1),
-(2, NULL, 'Padaria e Pastelaria', 'padaria-e-pastelaria', NULL, 2, 1),
-(3, NULL, 'Talho', 'talho', NULL, 3, 1),
-(4, NULL, 'Peixaria', 'peixaria', NULL, 4, 1),
-(5, NULL, 'Laticínios e Ovos', 'laticinios-e-ovos', NULL, 5, 1),
-(6, NULL, 'Mercearia', 'mercearia', NULL, 6, 1),
-(7, NULL, 'Bebidas', 'bebidas', NULL, 7, 1),
-(8, NULL, 'Congelados', 'congelados', NULL, 8, 1),
-(9, 1, 'Frutas', 'frutas', NULL, 1, 1),
-(10, 1, 'Legumes', 'legumes', NULL, 2, 1),
-(11, 6, 'Massas e Arroz', 'massas-e-arroz', NULL, 1, 1),
-(12, 6, 'Azeite e Óleos', 'azeite-e-oleos', NULL, 2, 1),
-(13, 7, 'Águas', 'aguas', NULL, 1, 1),
-(14, 7, 'Vinhos', 'vinhos', NULL, 2, 1);
+INSERT INTO `categoria` (`IDCategoria`, `IDCategoriaPai`, `Nome`, `Slug`, `Descricao`, `Ativo`) VALUES
+(1, NULL, 'Frutas e Legumes', 'frutas-e-legumes', NULL, 1),
+(2, NULL, 'Padaria e Pastelaria', 'padaria-e-pastelaria', NULL, 1),
+(3, NULL, 'Talho', 'talho', NULL, 1),
+(4, NULL, 'Peixaria', 'peixaria', NULL, 1),
+(5, NULL, 'Laticínios e Ovos', 'laticinios-e-ovos', NULL, 1),
+(6, NULL, 'Mercearia', 'mercearia', NULL, 1),
+(7, NULL, 'Bebidas', 'bebidas', NULL, 1),
+(8, NULL, 'Congelados', 'congelados', NULL, 1),
+(9, 1, 'Frutas', 'frutas', NULL, 1),
+(10, 1, 'Legumes', 'legumes', NULL, 1),
+(11, 6, 'Massas e Arroz', 'massas-e-arroz', NULL, 1),
+(12, 6, 'Azeite e Óleos', 'azeite-e-oleos', NULL, 1),
+(13, 7, 'Águas', 'aguas', NULL, 1),
+(14, 7, 'Vinhos', 'vinhos', NULL, 1);
 
 -- --------------------------------------------------------
 

@@ -256,7 +256,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if ($acao === 'guardar_categoria') {
-                $idCategoriaRaw = trim($_POST['idCategoria'] ?? '0');
+                $idCategoriaRaw = trim($_POST['idCategoria'] ?? '');
+                if ($idCategoriaRaw === '') {
+                    $idCategoriaRaw = '0';
+                }
                 if (!preg_match('/^\d+$/', $idCategoriaRaw)) {
                     throw new InvalidArgumentException('Categoria inválida.');
                 }
@@ -389,7 +392,7 @@ $mensagens = [
 ];
 $mensagem = $mensagens[$_GET['ok'] ?? ''] ?? '';
 
-$categorias = $pdo->query('SELECT IDCategoria, IDCategoriaPai, Nome, Slug, Ativo FROM Categoria ORDER BY Nome')->fetchAll();
+$categorias = $pdo->query('SELECT IDCategoria, IDCategoriaPai, Nome, Slug, Ativo FROM Categoria ORDER BY Nome ASC, IDCategoria ASC')->fetchAll();
 $fornecedores = $pdo->query('SELECT IDFornecedor, Nome FROM Fornecedor ORDER BY Nome')->fetchAll();
 $produtos = $pdo->query(
     'SELECT p.IDProduto, p.SKU, p.Nome, p.Preco, p.StockQuantidade, p.Ativo, p.Imagem,

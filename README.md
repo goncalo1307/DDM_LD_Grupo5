@@ -9,7 +9,7 @@ A tabela `ProdutoImagem`, usada para guardar a galeria, é criada automaticament
 
 ## Categorias
 
-Uma categoria só pode ser eliminada quando não tem produtos nem subcategorias associados. Reatribua os produtos ou subcategorias antes de tentar eliminá-la.
+As categorias são ordenadas automaticamente por nome, por ordem alfabética, sem opção de ordenação manual. Uma categoria só pode ser eliminada quando não tem produtos nem subcategorias associados. Reatribua os produtos ou subcategorias antes de tentar eliminá-la.
 
 ## Componentes partilhados
 
