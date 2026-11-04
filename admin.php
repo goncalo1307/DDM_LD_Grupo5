@@ -606,6 +606,12 @@ $mensagens = [
 $mensagem = $mensagens[$_GET['ok'] ?? ''] ?? '';
 
 $totalEncomendas = (int) $pdo->query('SELECT COUNT(*) FROM Encomenda')->fetchColumn();
+$encomendasPorPagina = 10;
+$totalPaginasEncomendas = max(1, (int) ceil($totalEncomendas / $encomendasPorPagina));
+$paginaEncomendas = isset($_GET['pagina_encomendas']) && is_string($_GET['pagina_encomendas'])
+    && ctype_digit($_GET['pagina_encomendas'])
+    ? max(1, min((int) $_GET['pagina_encomendas'], $totalPaginasEncomendas))
+    : 1;
 $totalHistorico = $isAdmin
     ? (int) $pdo->query('SELECT COUNT(*) FROM HistoricoEstadoEncomenda')->fetchColumn()
     : 0;
@@ -636,6 +642,7 @@ $funcionarios = $isAdmin
          ORDER BY Nome, IDUtilizador"
     )->fetchAll()
     : [];
+$offsetEncomendas = ($paginaEncomendas - 1) * $encomendasPorPagina;
 $encomendas = $pdo->query(
     'SELECT e.IDEncomenda, e.NumeroEncomenda, e.Estado, e.EstadoPagamento, e.MetodoPagamento,
             e.Total, e.DataCriacao, e.DataEntrega, e.EntregaNome, e.EntregaTelemovel,
@@ -648,7 +655,8 @@ $encomendas = $pdo->query(
             ) AS Artigos
      FROM Encomenda e
      INNER JOIN Utilizador u ON u.IDUtilizador = e.IDUtilizador
-     ORDER BY e.DataCriacao DESC, e.IDEncomenda DESC'
+     ORDER BY e.DataCriacao DESC, e.IDEncomenda DESC
+     LIMIT ' . $encomendasPorPagina . ' OFFSET ' . $offsetEncomendas
 )->fetchAll();
 
 $pesquisaProdutos = isset($_GET['pesquisa_produtos']) && is_string($_GET['pesquisa_produtos'])
@@ -661,6 +669,13 @@ $totalProdutos = (int) $pdo->query('SELECT COUNT(*) FROM Produto')->fetchColumn(
 $totalFornecedores = (int) $pdo->query('SELECT COUNT(*) FROM Fornecedor')->fetchColumn();
 
 $categorias = $pdo->query('SELECT IDCategoria, IDCategoriaPai, Nome, Slug, Ativo FROM Categoria ORDER BY Nome ASC, IDCategoria ASC')->fetchAll();
+$categoriasPorPagina = 10;
+$totalPaginasCategorias = max(1, (int) ceil(count($categorias) / $categoriasPorPagina));
+$paginaCategorias = isset($_GET['pagina_categorias']) && is_string($_GET['pagina_categorias'])
+    && ctype_digit($_GET['pagina_categorias'])
+    ? max(1, min((int) $_GET['pagina_categorias'], $totalPaginasCategorias))
+    : 1;
+$categoriasPagina = array_slice($categorias, ($paginaCategorias - 1) * $categoriasPorPagina, $categoriasPorPagina);
 $fornecedores = $pdo->query(
     'SELECT IDFornecedor, Nome FROM Fornecedor ORDER BY Nome'
 )->fetchAll();
@@ -1095,6 +1110,22 @@ function admin_csrf(): string {
           </tbody>
         </table>
       </div>
+      <?php if ($totalPaginasEncomendas > 1): ?>
+        <nav class="admin-pagination" aria-label="Paginação das encomendas">
+          <?php if ($paginaEncomendas > 1): ?>
+            <a href="<?= e(admin_url_paginacao([], 'pagina_encomendas', $paginaEncomendas - 1)) ?>#encomendas" aria-label="Página anterior">‹</a>
+          <?php endif; ?>
+          <?php for ($pagina = max(1, $paginaEncomendas - 2); $pagina <= min($totalPaginasEncomendas, $paginaEncomendas + 2); $pagina++): ?>
+            <a href="<?= e(admin_url_paginacao([], 'pagina_encomendas', $pagina)) ?>#encomendas"
+               class="<?= $pagina === $paginaEncomendas ? 'is-current' : '' ?>"
+               <?= $pagina === $paginaEncomendas ? 'aria-current="page"' : '' ?>><?= $pagina ?></a>
+          <?php endfor; ?>
+          <?php if ($paginaEncomendas < $totalPaginasEncomendas): ?>
+            <a href="<?= e(admin_url_paginacao([], 'pagina_encomendas', $paginaEncomendas + 1)) ?>#encomendas" aria-label="Página seguinte">›</a>
+          <?php endif; ?>
+          <span>Página <?= $paginaEncomendas ?> de <?= $totalPaginasEncomendas ?></span>
+        </nav>
+      <?php endif; ?>
     </section>
 
     <?php if ($isAdmin): ?>
@@ -1446,14 +1477,14 @@ function admin_csrf(): string {
         <table class="admin-table">
           <thead><tr><th>Categoria</th><th>Slug</th><th>Estado</th><th>Ações</th></tr></thead>
           <tbody>
-            <?php foreach ($categorias as $categoria): ?>
+            <?php foreach ($categoriasPagina as $categoria): ?>
               <tr class="<?= (string) $categoria['IDCategoria'] === (string) ($categoriaEdicao['IDCategoria'] ?? '') && $mostrarFormularioCategoria ? 'admin-category-editing' : '' ?>">
                 <td><?= e($categoria['Nome']) ?></td>
                 <td><?= e($categoria['Slug'] ?? '') ?></td>
                 <td><span class="admin-status <?= (int) ($categoria['Ativo'] ?? 0) ? 'is-active' : 'is-inactive' ?>"><?= (int) ($categoria['Ativo'] ?? 0) ? 'Ativa' : 'Inativa' ?></span></td>
                 <td>
                   <div class="admin-row-actions">
-                    <a class="admin-secondary-button" href="admin.php?editar_categoria=<?= (int) $categoria['IDCategoria'] ?>#form-categoria">Editar</a>
+                    <a class="admin-secondary-button" href="admin.php?editar_categoria=<?= (int) $categoria['IDCategoria'] ?>&amp;pagina_categorias=<?= $paginaCategorias ?>#form-categoria">Editar</a>
                     <form method="post" action="admin.php#categorias" onsubmit="return confirm('Eliminar a categoria <?= e($categoria['Nome']) ?>? Só é possível eliminar categorias sem produtos ou subcategorias.');">
                       <?= admin_csrf() ?>
                       <input type="hidden" name="acao" value="eliminar_categoria">
@@ -1470,6 +1501,22 @@ function admin_csrf(): string {
           </tbody>
         </table>
       </div>
+      <?php if ($totalPaginasCategorias > 1): ?>
+        <nav class="admin-pagination" aria-label="Paginação de categorias">
+          <?php if ($paginaCategorias > 1): ?>
+            <a href="<?= e(admin_url_paginacao([], 'pagina_categorias', $paginaCategorias - 1)) ?>#categorias" aria-label="Página anterior">‹</a>
+          <?php endif; ?>
+          <?php for ($pagina = max(1, $paginaCategorias - 2); $pagina <= min($totalPaginasCategorias, $paginaCategorias + 2); $pagina++): ?>
+            <a href="<?= e(admin_url_paginacao([], 'pagina_categorias', $pagina)) ?>#categorias"
+               class="<?= $pagina === $paginaCategorias ? 'is-current' : '' ?>"
+               <?= $pagina === $paginaCategorias ? 'aria-current="page"' : '' ?>><?= $pagina ?></a>
+          <?php endfor; ?>
+          <?php if ($paginaCategorias < $totalPaginasCategorias): ?>
+            <a href="<?= e(admin_url_paginacao([], 'pagina_categorias', $paginaCategorias + 1)) ?>#categorias" aria-label="Página seguinte">›</a>
+          <?php endif; ?>
+          <span>Página <?= $paginaCategorias ?> de <?= $totalPaginasCategorias ?></span>
+        </nav>
+      <?php endif; ?>
     </section>
 
     <section class="admin-section" id="fornecedores">

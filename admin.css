@@ -279,6 +279,7 @@ body.admin-page {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 7px;
   margin-top: 20px;
 }
@@ -289,19 +290,19 @@ body.admin-page {
   height: 36px;
   padding: 0 9px;
   place-items: center;
-  border: 1px solid var(--admin-line);
+  border: 1px solid rgba(24, 53, 43, .16);
   border-radius: 9px;
   background: #fff;
   color: var(--admin-ink);
   font-size: 13px;
   font-weight: 750;
-  transition: background .16s, border-color .16s, color .16s;
+  text-decoration: none;
 }
 
 .admin-pagination a:hover,
 .admin-pagination a.is-current {
-  border-color: var(--admin-accent);
-  background: var(--admin-accent);
+  border-color: var(--admin-ink);
+  background: var(--admin-ink);
   color: #fff;
 }
 
