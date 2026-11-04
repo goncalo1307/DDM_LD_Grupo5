@@ -299,6 +299,39 @@ a {
   gap: 12px;
   margin-top: 24px;
 }
+.orders-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 20px;
+}
+.orders-pagination a {
+  display: grid;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 9px;
+  place-items: center;
+  border: 1px solid rgba(24, 53, 43, .16);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 750;
+  text-decoration: none;
+}
+.orders-pagination a:hover,
+.orders-pagination a.is-current {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fff;
+}
+.orders-pagination span {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
 .order-card {
   padding: 18px;
   border: 1px solid rgba(24, 53, 43, .12);

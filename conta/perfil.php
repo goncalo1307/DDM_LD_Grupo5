@@ -308,6 +308,19 @@ $stmt->execute([$id]);
 $moradas = $stmt->fetchAll();
 
 $stmt = $pdo->prepare(
+    'SELECT COUNT(*) FROM Encomenda WHERE IDUtilizador = ?'
+);
+$stmt->execute([$id]);
+$totalEncomendasUtilizador = (int) $stmt->fetchColumn();
+$encomendasPorPagina = 10;
+$totalPaginasEncomendas = max(1, (int) ceil($totalEncomendasUtilizador / $encomendasPorPagina));
+$paginaEncomendas = isset($_GET['pagina_encomendas']) && is_string($_GET['pagina_encomendas'])
+    && ctype_digit($_GET['pagina_encomendas'])
+    ? max(1, min((int) $_GET['pagina_encomendas'], $totalPaginasEncomendas))
+    : 1;
+$offsetEncomendas = ($paginaEncomendas - 1) * $encomendasPorPagina;
+
+$stmt = $pdo->prepare(
     'SELECT e.NumeroEncomenda, e.Estado, e.EstadoPagamento, e.Total, e.DataCriacao, e.DataEntrega,
             (
                 SELECT GROUP_CONCAT(CONCAT(ie.NomeProduto, \' x\', ie.Quantidade) SEPARATOR \', \')
@@ -316,7 +329,8 @@ $stmt = $pdo->prepare(
             ) AS Artigos
      FROM Encomenda e
      WHERE e.IDUtilizador = ?
-     ORDER BY e.DataCriacao DESC, e.IDEncomenda DESC'
+     ORDER BY e.DataCriacao DESC, e.IDEncomenda DESC
+     LIMIT ' . $encomendasPorPagina . ' OFFSET ' . $offsetEncomendas
 );
 $stmt->execute([$id]);
 $encomendasUtilizador = $stmt->fetchAll();
@@ -329,7 +343,7 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>O meu perfil | Cantinho</title>
-  <link rel="stylesheet" href="css/conta.css?v=20261104145000">
+  <link rel="stylesheet" href="css/conta.css?v=20261104230500">
 </head>
 <body>
   <header class="account-header">
@@ -409,6 +423,22 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
             </article>
           <?php endforeach; ?>
         </div>
+        <?php if ($totalPaginasEncomendas > 1): ?>
+          <nav class="orders-pagination" aria-label="Paginação das minhas encomendas">
+            <?php if ($paginaEncomendas > 1): ?>
+              <a href="perfil.php?periodo=<?= e($periodoGastos) ?>&amp;pagina_encomendas=<?= $paginaEncomendas - 1 ?>#encomendas" aria-label="Página anterior">‹</a>
+            <?php endif; ?>
+            <?php for ($pagina = max(1, $paginaEncomendas - 2); $pagina <= min($totalPaginasEncomendas, $paginaEncomendas + 2); $pagina++): ?>
+              <a href="perfil.php?periodo=<?= e($periodoGastos) ?>&amp;pagina_encomendas=<?= $pagina ?>#encomendas"
+                 class="<?= $pagina === $paginaEncomendas ? 'is-current' : '' ?>"
+                 <?= $pagina === $paginaEncomendas ? 'aria-current="page"' : '' ?>><?= $pagina ?></a>
+            <?php endfor; ?>
+            <?php if ($paginaEncomendas < $totalPaginasEncomendas): ?>
+              <a href="perfil.php?periodo=<?= e($periodoGastos) ?>&amp;pagina_encomendas=<?= $paginaEncomendas + 1 ?>#encomendas" aria-label="Página seguinte">›</a>
+            <?php endif; ?>
+            <span>Página <?= $paginaEncomendas ?> de <?= $totalPaginasEncomendas ?></span>
+          </nav>
+        <?php endif; ?>
       <?php else: ?>
         <p class="gastos-vazio">Ainda não tem encomendas.</p>
       <?php endif; ?>
