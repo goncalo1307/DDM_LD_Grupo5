@@ -224,6 +224,93 @@ body.admin-page {
   font-size: 13px;
 }
 
+.admin-list-search {
+  margin: 0 0 18px;
+  padding: 15px 16px;
+  border: 1px solid #e6ece6;
+  border-radius: 13px;
+  background: linear-gradient(110deg, #f8faf7, #fffdf6);
+}
+
+.admin-list-search > label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--admin-ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-search-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-search-control input[type="search"] {
+  width: min(100%, 520px);
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid #d9e1da;
+  border-radius: 9px;
+  outline: none;
+  background: #fff;
+  color: var(--admin-ink);
+  font-size: 13px;
+}
+
+.admin-search-control input[type="search"]:focus {
+  border-color: #5e9875;
+  box-shadow: 0 0 0 3px rgba(65, 124, 84, .12);
+}
+
+.admin-search-control .admin-primary-button,
+.admin-search-control .admin-secondary-button {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.admin-list-search > p {
+  margin: 8px 0 0;
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 20px;
+}
+
+.admin-pagination a {
+  display: grid;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 9px;
+  place-items: center;
+  border: 1px solid var(--admin-line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--admin-ink);
+  font-size: 13px;
+  font-weight: 750;
+  transition: background .16s, border-color .16s, color .16s;
+}
+
+.admin-pagination a:hover,
+.admin-pagination a.is-current {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent);
+  color: #fff;
+}
+
+.admin-pagination span {
+  margin-left: 8px;
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+
 .admin-form {
   margin: 22px 0;
   padding: clamp(18px, 3vw, 26px);
@@ -657,6 +744,12 @@ body.admin-page {
   color: var(--admin-muted);
 }
 
+.admin-table td:last-child {
+  min-width: 210px;
+  max-width: 340px;
+  white-space: normal;
+}
+
 .admin-table tr.admin-category-editing {
   background: #f2f8f2;
   box-shadow: inset 3px 0 #4b8058;
@@ -748,6 +841,20 @@ body.admin-page {
   .admin-section-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .admin-search-control {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .admin-search-control input[type="search"] {
+    width: 100%;
+    flex: 1 0 100%;
+  }
+
+  .admin-pagination {
+    flex-wrap: wrap;
   }
 
   .admin-form {

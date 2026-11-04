@@ -491,20 +491,104 @@ $mensagens = [
 ];
 $mensagem = $mensagens[$_GET['ok'] ?? ''] ?? '';
 
+$pesquisaProdutos = isset($_GET['pesquisa_produtos']) && is_string($_GET['pesquisa_produtos'])
+    ? trim($_GET['pesquisa_produtos'])
+    : '';
+$pesquisaFornecedores = isset($_GET['pesquisa_fornecedores']) && is_string($_GET['pesquisa_fornecedores'])
+    ? trim($_GET['pesquisa_fornecedores'])
+    : '';
+$totalProdutos = (int) $pdo->query('SELECT COUNT(*) FROM Produto')->fetchColumn();
+$totalFornecedores = (int) $pdo->query('SELECT COUNT(*) FROM Fornecedor')->fetchColumn();
+
 $categorias = $pdo->query('SELECT IDCategoria, IDCategoriaPai, Nome, Slug, Ativo FROM Categoria ORDER BY Nome ASC, IDCategoria ASC')->fetchAll();
 $fornecedores = $pdo->query(
-    'SELECT IDFornecedor, Nome, NIF, Email, Telefone, Endereco, CodigoPostal, Localidade, Pais, Notas
-     FROM Fornecedor
-     ORDER BY Nome'
+    'SELECT IDFornecedor, Nome FROM Fornecedor ORDER BY Nome'
 )->fetchAll();
-$produtos = $pdo->query(
+
+$filtroProdutos = '';
+$parametrosPesquisaProdutos = [];
+if ($pesquisaProdutos !== '') {
+    $filtroProdutos = ' WHERE p.Nome LIKE ? OR p.SKU LIKE ? OR CAST(p.IDProduto AS CHAR) LIKE ?';
+    $termoProduto = '%' . $pesquisaProdutos . '%';
+    $parametrosPesquisaProdutos = [$termoProduto, $termoProduto, $termoProduto];
+}
+$stmt = $pdo->prepare(
+    'SELECT COUNT(*)
+     FROM Produto p' . $filtroProdutos
+);
+$stmt->execute($parametrosPesquisaProdutos);
+$totalProdutosFiltrados = (int) $stmt->fetchColumn();
+$totalPaginasProdutos = max(1, (int) ceil($totalProdutosFiltrados / 10));
+$paginaProdutos = isset($_GET['pagina_produtos']) && is_string($_GET['pagina_produtos'])
+    && ctype_digit($_GET['pagina_produtos'])
+    ? max(1, min((int) $_GET['pagina_produtos'], $totalPaginasProdutos))
+    : 1;
+$stmt = $pdo->prepare(
     'SELECT p.IDProduto, p.SKU, p.Nome, p.Preco, p.StockQuantidade, p.Ativo, p.Imagem,
             c.Nome AS CategoriaNome
      FROM Produto p
-     LEFT JOIN Categoria c ON c.IDCategoria = p.IDCategoria
-     ORDER BY p.Nome
-     LIMIT 300'
-)->fetchAll();
+     LEFT JOIN Categoria c ON c.IDCategoria = p.IDCategoria'
+    . $filtroProdutos
+    . ' ORDER BY p.Nome
+        LIMIT 10 OFFSET ' . (($paginaProdutos - 1) * 10)
+);
+$stmt->execute($parametrosPesquisaProdutos);
+$produtos = $stmt->fetchAll();
+
+$filtroFornecedores = '';
+$parametrosPesquisaFornecedores = [];
+if ($pesquisaFornecedores !== '') {
+    $filtroFornecedores = '
+     WHERE f.Nome LIKE ?
+        OR CAST(f.IDFornecedor AS CHAR) LIKE ?
+        OR COALESCE(f.NIF, \'\') LIKE ?
+        OR COALESCE(f.Telefone, \'\') LIKE ?
+        OR EXISTS (
+            SELECT 1
+            FROM Produto p
+            WHERE p.IDFornecedor = f.IDFornecedor
+              AND (p.Nome LIKE ? OR p.SKU LIKE ?)
+        )';
+    $termoFornecedor = '%' . $pesquisaFornecedores . '%';
+    $parametrosPesquisaFornecedores = array_fill(0, 6, $termoFornecedor);
+}
+$stmt = $pdo->prepare('SELECT COUNT(*) FROM Fornecedor f' . $filtroFornecedores);
+$stmt->execute($parametrosPesquisaFornecedores);
+$totalFornecedoresFiltrados = (int) $stmt->fetchColumn();
+$totalPaginasFornecedores = max(1, (int) ceil($totalFornecedoresFiltrados / 10));
+$paginaFornecedores = isset($_GET['pagina_fornecedores']) && is_string($_GET['pagina_fornecedores'])
+    && ctype_digit($_GET['pagina_fornecedores'])
+    ? max(1, min((int) $_GET['pagina_fornecedores'], $totalPaginasFornecedores))
+    : 1;
+$stmt = $pdo->prepare(
+    'SELECT f.IDFornecedor, f.Nome, f.NIF, f.Email, f.Telefone, f.Localidade,
+            (
+                SELECT GROUP_CONCAT(p.Nome ORDER BY p.Nome SEPARATOR \', \')
+                FROM Produto p
+                WHERE p.IDFornecedor = f.IDFornecedor
+            ) AS Produtos
+     FROM Fornecedor f'
+    . $filtroFornecedores
+    . ' ORDER BY f.Nome
+        LIMIT 10 OFFSET ' . (($paginaFornecedores - 1) * 10)
+);
+$stmt->execute($parametrosPesquisaFornecedores);
+$fornecedoresPagina = $stmt->fetchAll();
+
+$parametrosPaginacaoProdutos = [
+    'pesquisa_produtos' => $pesquisaProdutos,
+    'pesquisa_fornecedores' => $pesquisaFornecedores,
+    'pagina_fornecedores' => $paginaFornecedores,
+];
+$parametrosPaginacaoFornecedores = [
+    'pesquisa_produtos' => $pesquisaProdutos,
+    'pagina_produtos' => $paginaProdutos,
+    'pesquisa_fornecedores' => $pesquisaFornecedores,
+];
+$parametrosLimparPesquisaProdutos = $parametrosPaginacaoProdutos;
+unset($parametrosLimparPesquisaProdutos['pesquisa_produtos']);
+$parametrosLimparPesquisaFornecedores = $parametrosPaginacaoFornecedores;
+unset($parametrosLimparPesquisaFornecedores['pesquisa_fornecedores']);
 
 $produtoEdicao = $produtoVazio;
 $mostrarFormularioProduto = isset($_GET['novo_produto']);
@@ -571,6 +655,11 @@ if ($erro !== '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
 function admin_campo(array $dados, string $campo): string {
     return e((string) ($dados[$campo] ?? ''));
+}
+
+function admin_url_paginacao(array $parametros, string $parametroPagina, int $pagina): string {
+    $parametros[$parametroPagina] = $pagina;
+    return 'admin.php?' . http_build_query($parametros);
 }
 
 function admin_post_campo(string $campo): string {
@@ -744,9 +833,9 @@ function admin_csrf(): string {
     </div>
 
     <nav class="admin-nav" aria-label="Secções de administração">
-      <a href="#produtos">Produtos <span><?= count($produtos) ?></span></a>
+      <a href="#produtos">Produtos <span><?= $totalProdutos ?></span></a>
       <a href="#categorias">Categorias <span><?= count($categorias) ?></span></a>
-      <a href="#fornecedores">Fornecedores <span><?= count($fornecedores) ?></span></a>
+      <a href="#fornecedores">Fornecedores <span><?= $totalFornecedores ?></span></a>
     </nav>
 
     <?php if ($mensagem): ?>
@@ -764,6 +853,19 @@ function admin_csrf(): string {
         </div>
         <a class="admin-primary-button" href="admin.php?novo_produto=1#form-produto">+ Adicionar produto</a>
       </div>
+      <form class="admin-list-search" method="get" action="admin.php#produtos">
+        <label for="pesquisa-produtos">Pesquisar produtos</label>
+        <div class="admin-search-control">
+          <input id="pesquisa-produtos" name="pesquisa_produtos" type="search" value="<?= e($pesquisaProdutos) ?>" placeholder="Nome, SKU ou número do produto">
+          <input type="hidden" name="pesquisa_fornecedores" value="<?= e($pesquisaFornecedores) ?>">
+          <input type="hidden" name="pagina_fornecedores" value="<?= $paginaFornecedores ?>">
+          <button class="admin-primary-button" type="submit">Pesquisar</button>
+          <?php if ($pesquisaProdutos !== ''): ?>
+            <a class="admin-secondary-button" href="<?= e(admin_url_paginacao($parametrosLimparPesquisaProdutos, 'pagina_produtos', 1)) ?>#produtos">Limpar</a>
+          <?php endif; ?>
+        </div>
+        <p><?= $totalProdutosFiltrados ?> <?= $totalProdutosFiltrados === 1 ? 'produto encontrado' : 'produtos encontrados' ?></p>
+      </form>
 
       <?php if ($mostrarFormularioProduto): ?>
       <form class="admin-form admin-form-featured" id="form-produto" method="post" enctype="multipart/form-data" action="admin.php#form-produto">
@@ -954,9 +1056,27 @@ function admin_csrf(): string {
           </article>
         <?php endforeach; ?>
         <?php if (!$produtos): ?>
-          <div class="admin-empty-state">Ainda não há produtos registados. Adicione o primeiro produto ao catálogo.</div>
+          <div class="admin-empty-state">
+            <?= $pesquisaProdutos !== '' ? 'Não foram encontrados produtos para esta pesquisa.' : 'Ainda não há produtos registados. Adicione o primeiro produto ao catálogo.' ?>
+          </div>
         <?php endif; ?>
       </div>
+      <?php if ($totalPaginasProdutos > 1): ?>
+        <nav class="admin-pagination" aria-label="Paginação de produtos">
+          <?php if ($paginaProdutos > 1): ?>
+            <a href="<?= e(admin_url_paginacao($parametrosPaginacaoProdutos, 'pagina_produtos', $paginaProdutos - 1)) ?>#produtos" aria-label="Página anterior">‹</a>
+          <?php endif; ?>
+          <?php for ($pagina = max(1, $paginaProdutos - 2); $pagina <= min($totalPaginasProdutos, $paginaProdutos + 2); $pagina++): ?>
+            <a href="<?= e(admin_url_paginacao($parametrosPaginacaoProdutos, 'pagina_produtos', $pagina)) ?>#produtos"
+               class="<?= $pagina === $paginaProdutos ? 'is-current' : '' ?>"
+               <?= $pagina === $paginaProdutos ? 'aria-current="page"' : '' ?>><?= $pagina ?></a>
+          <?php endfor; ?>
+          <?php if ($paginaProdutos < $totalPaginasProdutos): ?>
+            <a href="<?= e(admin_url_paginacao($parametrosPaginacaoProdutos, 'pagina_produtos', $paginaProdutos + 1)) ?>#produtos" aria-label="Página seguinte">›</a>
+          <?php endif; ?>
+          <span>Página <?= $paginaProdutos ?> de <?= $totalPaginasProdutos ?></span>
+        </nav>
+      <?php endif; ?>
     </section>
 
     <section class="admin-section" id="categorias">
@@ -1085,29 +1205,54 @@ function admin_csrf(): string {
         </div>
       </form>
 
+      <form class="admin-list-search" method="get" action="admin.php#fornecedores">
+        <label for="pesquisa-fornecedores">Pesquisar fornecedores</label>
+        <div class="admin-search-control">
+          <input id="pesquisa-fornecedores" name="pesquisa_fornecedores" type="search" value="<?= e($pesquisaFornecedores) ?>" placeholder="Nome, NIF, telefone, produto ou SKU">
+          <input type="hidden" name="pesquisa_produtos" value="<?= e($pesquisaProdutos) ?>">
+          <input type="hidden" name="pagina_produtos" value="<?= $paginaProdutos ?>">
+          <button class="admin-primary-button" type="submit">Pesquisar</button>
+          <?php if ($pesquisaFornecedores !== ''): ?>
+            <a class="admin-secondary-button" href="<?= e(admin_url_paginacao($parametrosLimparPesquisaFornecedores, 'pagina_fornecedores', 1)) ?>#fornecedores">Limpar</a>
+          <?php endif; ?>
+        </div>
+        <p><?= $totalFornecedoresFiltrados ?> <?= $totalFornecedoresFiltrados === 1 ? 'fornecedor encontrado' : 'fornecedores encontrados' ?></p>
+      </form>
+
       <div class="admin-table-wrap">
         <table class="admin-table">
-          <thead><tr><th>Fornecedor</th><th>NIF</th><th>Contacto</th><th>Localidade</th></tr></thead>
+          <thead><tr><th>Fornecedor</th><th>NIF / telefone</th><th>Email</th><th>Produtos associados</th></tr></thead>
           <tbody>
-            <?php foreach ($fornecedores as $fornecedor): ?>
+            <?php foreach ($fornecedoresPagina as $fornecedor): ?>
               <tr>
                 <td><?= e($fornecedor['Nome']) ?></td>
-                <td><?= e($fornecedor['NIF'] ?? '') ?></td>
-                <td>
-                  <?= e($fornecedor['Email'] ?? '') ?>
-                  <?php if (!empty($fornecedor['Telefone'])): ?>
-                    <small><?= e($fornecedor['Telefone']) ?></small>
-                  <?php endif; ?>
-                </td>
-                <td><?= e($fornecedor['Localidade'] ?? '') ?></td>
+                <td><?= e($fornecedor['NIF'] ?? '') ?><small><?= e($fornecedor['Telefone'] ?? '') ?></small></td>
+                <td><?= e($fornecedor['Email'] ?? '') ?></td>
+                <td><?= e($fornecedor['Produtos'] ?? 'Sem produtos associados') ?></td>
               </tr>
             <?php endforeach; ?>
-            <?php if (!$fornecedores): ?>
-              <tr><td colspan="4">Ainda não há fornecedores registados.</td></tr>
+            <?php if (!$fornecedoresPagina): ?>
+              <tr><td colspan="4"><?= $pesquisaFornecedores !== '' ? 'Não foram encontrados fornecedores para esta pesquisa.' : 'Ainda não há fornecedores registados.' ?></td></tr>
             <?php endif; ?>
           </tbody>
         </table>
       </div>
+      <?php if ($totalPaginasFornecedores > 1): ?>
+        <nav class="admin-pagination" aria-label="Paginação de fornecedores">
+          <?php if ($paginaFornecedores > 1): ?>
+            <a href="<?= e(admin_url_paginacao($parametrosPaginacaoFornecedores, 'pagina_fornecedores', $paginaFornecedores - 1)) ?>#fornecedores" aria-label="Página anterior">‹</a>
+          <?php endif; ?>
+          <?php for ($pagina = max(1, $paginaFornecedores - 2); $pagina <= min($totalPaginasFornecedores, $paginaFornecedores + 2); $pagina++): ?>
+            <a href="<?= e(admin_url_paginacao($parametrosPaginacaoFornecedores, 'pagina_fornecedores', $pagina)) ?>#fornecedores"
+               class="<?= $pagina === $paginaFornecedores ? 'is-current' : '' ?>"
+               <?= $pagina === $paginaFornecedores ? 'aria-current="page"' : '' ?>><?= $pagina ?></a>
+          <?php endfor; ?>
+          <?php if ($paginaFornecedores < $totalPaginasFornecedores): ?>
+            <a href="<?= e(admin_url_paginacao($parametrosPaginacaoFornecedores, 'pagina_fornecedores', $paginaFornecedores + 1)) ?>#fornecedores" aria-label="Página seguinte">›</a>
+          <?php endif; ?>
+          <span>Página <?= $paginaFornecedores ?> de <?= $totalPaginasFornecedores ?></span>
+        </nav>
+      <?php endif; ?>
     </section>
   </main>
   <script src="javascript.js"></script>

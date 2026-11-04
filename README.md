@@ -13,7 +13,7 @@ As categorias são ordenadas automaticamente por nome, por ordem alfabética, se
 
 ## Fornecedores
 
-O painel de administração permite criar fornecedores com nome e dados de contacto. Os fornecedores criados ficam disponíveis para associação aos produtos.
+O painel de administração permite criar fornecedores com nome e dados de contacto. Os fornecedores criados ficam disponíveis para associação aos produtos. As listas de produtos e fornecedores no admin têm pesquisa própria e paginação de 10 registos; a pesquisa de fornecedores também encontra os produtos associados e pode usar o NIF, telefone ou número de fornecedor.
 
 ## Componentes partilhados
 
