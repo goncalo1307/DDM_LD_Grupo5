@@ -343,7 +343,7 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>O meu perfil | Cantinho</title>
-  <link rel="stylesheet" href="css/conta.css?v=20261104230500">
+  <link rel="stylesheet" href="../css/perfil/perfil.css?v=20261104230500">
 </head>
 <body>
   <header class="account-header">

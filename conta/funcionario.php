@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Acesso de funcionário | Cantinho</title>
-  <link rel="stylesheet" href="css/conta.css">
+  <link rel="stylesheet" href="../css/funcionario/funcionario.css">
 </head>
 <body>
   <header class="account-header">

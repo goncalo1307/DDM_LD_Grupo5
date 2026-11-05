@@ -58,7 +58,7 @@ $titulo = $query !== '' ? 'Pesquisa: ' . $query . ' | Cantinho Mercado' : 'Pesqu
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><?= e($titulo) ?></title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/pesquisa/pesquisa.css">
 </head>
 <body class="search-page-body">
   <?php require __DIR__ . '/componentes/navbar.php'; ?>

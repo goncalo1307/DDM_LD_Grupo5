@@ -1,5 +1,5 @@
 # Laboratorio2
-Projeto para avaliação Laboratório 2, Gonçalo &amp; André
+Projeto para avaliação Laboratório 2, Gonçalo &amp; André &amp; Fábio
 
 ## Imagens dos produtos
 
@@ -18,6 +18,10 @@ O painel de administração permite criar fornecedores com nome e dados de conta
 ## Componentes partilhados
 
 A navegação e o rodapé das páginas da loja são reutilizados a partir de `componentes/navbar.php` e `componentes/footer.php`.
+
+## Estilos CSS
+
+Os ficheiros CSS estão organizados na pasta `css/`, com uma pasta por área ou página, como `css/index/`, `css/produto/`, `css/perfil/` e `css/admin/`. As folhas de cada área importam os estilos comuns de `css/shared/`, evitando duplicar regras partilhadas.
 
 ## Acompanhamento de gastos
 

@@ -73,7 +73,7 @@ $titulo = $produto ? (string) $produto['Nome'] . ' | Cantinho Mercado' : 'Produt
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><?= e($titulo) ?></title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/produto/produto.css">
 </head>
 <body>
   <?php require __DIR__ . '/componentes/navbar.php'; ?>

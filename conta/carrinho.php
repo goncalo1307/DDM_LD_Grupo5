@@ -872,7 +872,7 @@ unset($_SESSION['lista_compra_flash']);
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>O meu carrinho | Cantinho</title>
-  <link rel="stylesheet" href="css/conta.css?v=checkout-radio-20261029">
+  <link rel="stylesheet" href="../css/carrinho/carrinho.css?v=checkout-radio-20261029">
 </head>
 <body>
   <header class="account-header">

@@ -86,7 +86,7 @@ if ($idCategoria !== null) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cantinho Mercado</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/index/index.css">
 </head>
 <body>
   <?php require __DIR__ . '/componentes/navbar.php'; ?>

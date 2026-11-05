@@ -22,7 +22,7 @@ if (!$utilizador || !(int) $utilizador['Ativo'] || (!$isAdmin && !$isFuncionario
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Acesso recusado | Cantinho</title>
-      <link rel="stylesheet" href="admin.css">
+      <link rel="stylesheet" href="css/admin/admin.css">
     </head>
     <body class="admin-page">
       <main class="admin-shell">
@@ -984,7 +984,7 @@ function admin_csrf(): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Administração | Cantinho</title>
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="css/admin/admin.css">
 </head>
 <body class="admin-page">
   <header class="admin-topbar">

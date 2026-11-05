@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Criar conta | Cantinho</title>
-  <link rel="stylesheet" href="css/conta.css">
+  <link rel="stylesheet" href="../css/criar-conta/criar-conta.css">
 </head>
 <body>
   <header class="account-header">
