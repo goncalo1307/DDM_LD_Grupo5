@@ -242,7 +242,7 @@ if ($idCategoria !== null) {
       </div>
       <div class="about-copy">
         <p>Escolhemos cada produto com cuidado e trabalhamos com produtores locais para levar mais sabor à sua mesa.</p>
-        <a href="#">Saiba mais sobre O Cantinho
+        <a href="sobre.php">Saiba mais sobre O Cantinho
           <svg class="svg" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></svg>
         </a>
       </div>
