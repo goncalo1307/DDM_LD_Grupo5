@@ -341,7 +341,24 @@ CREATE TABLE `produto` (
 --
 
 INSERT INTO `produto` (`IDProduto`, `SKU`, `Nome`, `Descricao`, `Marca`, `IDCategoria`, `IDFornecedor`, `Preco`, `PrecoPromocional`, `TaxaIVA`, `Unidade`, `StockQuantidade`, `StockMinimo`, `Alergenios`, `Imagem`, `Destaque`, `Ativo`, `IDCriadoPor`, `DataCriacao`, `IDAlteradoPor`, `DataAlterado`) VALUES
-(1, 'CAM-AZL-M', 'banana', 'EWQRTWYE', 'banana', 9, 1, 4.00, 3.00, 6.00, 'un', 11, 5, '123123123132', 'imagens/produtos/uploads/produto-1/cartao-fc045264601a0d21a696fde2.jpg', 0, 1, 4, '2026-10-24 21:34:52', 4, '2026-10-26 23:09:36');
+(1, 'FRU-BAN-001', 'Banana', 'Banana fresca.', NULL, 9, 1, 4.00, 3.00, 6.00, 'kg', 11, 5, NULL, 'imagens/produtos/legumes-frutas/frutas/banana/fruta-banana-catalago.jpg', 0, 1, 4, '2026-10-24 21:34:52', 4, '2026-10-26 23:09:36'),
+(2, 'FRU-PER-001', 'Pera', 'Pera fresca.', NULL, 9, 1, 2.49, NULL, 6.00, 'kg', 20, 5, NULL, 'imagens/produtos/legumes-frutas/frutas/pera/fruta-pera-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(3, 'LEG-CEB-001', 'Cebola', 'Cebola fresca.', NULL, 10, 1, 1.49, NULL, 6.00, 'kg', 20, 5, NULL, 'imagens/produtos/legumes-frutas/legumes/legumes-cebola-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(4, 'LEG-TOM-001', 'Tomate', 'Tomate fresco.', NULL, 10, 1, 2.49, NULL, 6.00, 'kg', 20, 5, NULL, 'imagens/produtos/legumes-frutas/legumes/legumes-tomate-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(5, 'MER-ARR-001', 'Arroz', 'Arroz.', NULL, 11, 3, 1.79, NULL, 6.00, '1 kg', 20, 5, NULL, 'imagens/produtos/mercearia/arroz-massa-farinha/arroz/mercearia-arroz-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(6, 'MER-FAR-001', 'Farinha', 'Farinha de trigo.', NULL, 11, 3, 1.09, NULL, 6.00, '1 kg', 20, 5, 'Glúten', 'imagens/produtos/mercearia/arroz-massa-farinha/farinhas/mercearia-farinha-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(7, 'MER-MAS-001', 'Massa', 'Massa seca.', NULL, 11, 3, 0.99, NULL, 6.00, '500 g', 20, 5, 'Glúten', 'imagens/produtos/mercearia/arroz-massa-farinha/massa/mercearia-massa-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(8, 'MER-AZE-001', 'Azeite', 'Azeite.', NULL, 12, 3, 6.99, NULL, 6.00, '750 ml', 20, 5, NULL, 'imagens/produtos/mercearia/azeite-oleo/azeite/mercearia-azeite-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(9, 'MER-OLE-001', 'Óleo', 'Óleo alimentar.', NULL, 12, 3, 2.49, NULL, 6.00, '1 l', 20, 5, NULL, 'imagens/produtos/mercearia/azeite-oleo/oleo/mercearia-oleo-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(10, 'PEI-SAL-CNG-001', 'Salmão congelado', 'Salmão congelado.', NULL, 8, NULL, 9.99, NULL, 6.00, 'kg', 20, 5, NULL, 'imagens/produtos/peixe/peixe congelado/salmao/peixe-salmao_congelado-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(11, 'PEI-DOU-CNG-001', 'Dourada congelada', 'Dourada congelada.', NULL, 8, NULL, 7.99, NULL, 6.00, 'kg', 20, 5, NULL, 'imagens/produtos/peixe/peixe congelado/dourada/peixe-dourada_congelado-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(12, 'PEI-SAL-FRE-001', 'Salmão fresco', 'Salmão fresco.', NULL, 4, NULL, 18.99, NULL, 6.00, 'kg', 20, 5, NULL, 'imagens/produtos/peixe/peixe fresco/salmao/peixe-salmao_fresco-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(13, 'PEI-DOU-FRE-001', 'Dourada fresca', 'Dourada fresca.', NULL, 4, NULL, 12.99, NULL, 6.00, 'kg', 20, 5, NULL, 'imagens/produtos/peixe/peixe fresco/dourada/peixe-dourada_fresco-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(14, 'TAL-FRA-001', 'Frango', 'Frango.', NULL, 3, 1, 5.99, NULL, 6.00, 'kg', 20, 5, NULL, 'imagens/produtos/carne/frango/img-frango-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(15, 'TAL-PER-001', 'Peru', 'Peru.', NULL, 3, 1, 8.49, NULL, 6.00, 'kg', 20, 5, NULL, 'imagens/produtos/carne/peru/img-peru-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(16, 'TAL-POR-001', 'Porco', 'Carne de porco.', NULL, 3, 1, 6.99, NULL, 6.00, 'kg', 20, 5, NULL, 'imagens/produtos/carne/porco/img-porco-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(17, 'BEB-AGC-001', 'Água com gás', 'Água com gás.', NULL, 13, 3, 0.79, NULL, 6.00, '1,5 l', 20, 5, NULL, 'imagens/produtos/bebidas/aguas/agua com gas/bebidas-agua_comgas-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00'),
+(18, 'BEB-AGS-001', 'Água sem gás', 'Água sem gás.', NULL, 13, 3, 0.59, NULL, 6.00, '1,5 l', 20, 5, NULL, 'imagens/produtos/bebidas/aguas/agua sem gas/bebidas-agua_semgas-catalago.jpg', 0, 1, NULL, '2026-11-05 00:00:00', NULL, '2026-11-05 00:00:00');
 
 -- --------------------------------------------------------
 
@@ -361,8 +378,30 @@ CREATE TABLE `produtoimagem` (
 --
 
 INSERT INTO `produtoimagem` (`IDProdutoImagem`, `IDProduto`, `Caminho`, `Ordem`) VALUES
-(1, 1, 'imagens/produtos/uploads/produto-1/destaque-1e63558d1a7ffd31a06ca12a.jpg', 0),
-(2, 1, 'imagens/produtos/uploads/produto-1/destaque-15e801bdcea75ab68104afb9.jpg', 1);
+(1, 1, 'imagens/produtos/legumes-frutas/frutas/banana/fruta-banana-1.jpg', 0),
+(2, 1, 'imagens/produtos/legumes-frutas/frutas/banana/fruta-banana-2.jpg', 1),
+(3, 2, 'imagens/produtos/legumes-frutas/frutas/pera/fruta-pera-1.jpg', 0),
+(4, 3, 'imagens/produtos/legumes-frutas/legumes/legumes-cebola-1.jpg', 0),
+(5, 4, 'imagens/produtos/legumes-frutas/legumes/legumes-tomate-1.jpg', 0),
+(6, 4, 'imagens/produtos/legumes-frutas/legumes/legumes-tomate-2.jpg', 1),
+(7, 5, 'imagens/produtos/mercearia/arroz-massa-farinha/arroz/mercearia-arroz-1.jpg', 0),
+(8, 6, 'imagens/produtos/mercearia/arroz-massa-farinha/farinhas/mercearia-farinha-1.jpg', 0),
+(9, 7, 'imagens/produtos/mercearia/arroz-massa-farinha/massa/mercearia-massa-1.jpg', 0),
+(10, 8, 'imagens/produtos/mercearia/azeite-oleo/azeite/mercearia-azeite-1.jpg', 0),
+(11, 9, 'imagens/produtos/mercearia/azeite-oleo/oleo/mercearia-oleo-1.jpg', 0),
+(12, 10, 'imagens/produtos/peixe/peixe congelado/salmao/peixe-salmao_congelado-1.jpg', 0),
+(13, 10, 'imagens/produtos/peixe/peixe congelado/salmao/peixe-salmao_congelado-2.jpg', 1),
+(14, 11, 'imagens/produtos/peixe/peixe congelado/dourada/peixe-dourada_congelado-1.jpg', 0),
+(15, 12, 'imagens/produtos/peixe/peixe fresco/salmao/peixe-salmao_fresco-1.jpg', 0),
+(16, 13, 'imagens/produtos/peixe/peixe fresco/dourada/peixe-dourada_fresco-1.jpg', 0),
+(17, 14, 'imagens/produtos/carne/frango/img-frango-1.jpg', 0),
+(18, 15, 'imagens/produtos/carne/peru/img-peru-1.jpg', 0),
+(19, 15, 'imagens/produtos/carne/peru/img-peru-2.jpg', 1),
+(20, 15, 'imagens/produtos/carne/peru/img-peru-3.jpg', 2),
+(21, 16, 'imagens/produtos/carne/porco/img-porco-1.jpg', 0),
+(22, 17, 'imagens/produtos/bebidas/aguas/agua com gas/bebidas-agua_comgas-1.jpg', 0),
+(23, 17, 'imagens/produtos/bebidas/aguas/agua com gas/bebidas-agua_comgas-2.jpg', 1),
+(24, 18, 'imagens/produtos/bebidas/aguas/agua sem gas/bebidas-agua_semgas-1.jpg', 0);
 
 -- --------------------------------------------------------
 
@@ -727,13 +766,13 @@ ALTER TABLE `movimentostock`
 -- AUTO_INCREMENT de tabela `produto`
 --
 ALTER TABLE `produto`
-  MODIFY `IDProduto` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `IDProduto` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT de tabela `produtoimagem`
 --
 ALTER TABLE `produtoimagem`
-  MODIFY `IDProdutoImagem` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `IDProdutoImagem` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT de tabela `tokenutilizador`
