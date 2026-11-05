@@ -17,6 +17,7 @@ $valorPesquisa = $paginaPesquisa && isset($query) ? (string) $query : '';
         <a href="index.php#ofertas">Ofertas</a>
         <a href="index.php#categorias">Produtos</a>
         <a href="sobre.php">Quem somos</a>
+        <a href="ajuda.php">Ajuda</a>
       </nav>
       <form class="search desktop-search<?= $classePesquisa ?>" action="pesquisa.php" method="get">
         <svg class="svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
@@ -65,6 +66,7 @@ $valorPesquisa = $paginaPesquisa && isset($query) ? (string) $query : '';
       <a href="index.php#ofertas">Ofertas</a>
       <a href="index.php#categorias">Produtos</a>
       <a href="sobre.php">Quem somos</a>
+      <a href="ajuda.php">Ajuda</a>
       <?php if ($logado): ?>
         <?php if ($tipoUtilizador === 'funcionario'): ?>
           <a href="admin.php">Gestão de encomendas</a>
