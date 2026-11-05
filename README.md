@@ -25,7 +25,7 @@ Os ficheiros CSS estão organizados na pasta `css/`, com uma pasta por área ou 
 
 ## Acompanhamento de gastos
 
-O perfil usa `GastoCompra` para apresentar total, compras recentes e média mensal ou semanal. Também permite exportar os totais por mês ou semana e o número de compras em CSV. O checkout cria um registo de gasto ligado à referência da encomenda.
+O perfil apresenta o total, as compras recentes e a média mensal ou semanal das encomendas do utilizador que estejam simultaneamente pagas e entregues. Também permite exportar os totais por mês ou semana e o número de compras em CSV.
 
 ## Encomendas e entregas
 
@@ -37,4 +37,4 @@ No checkout, cada utilizador pode guardar a compra como lista predefinida. Na p�
 
 ## Checkout
 
-O checkout é feito no fim da página do carrinho. Revalida o stock dentro de uma transação, guarda a encomenda e os respetivos itens, regista o movimento de stock e limpa o carrinho. O envio custa 3,99 € em encomendas até 35 € e é gratuito acima desse valor. O método de pagamento fica registado, mas não existe integração com gateways: todas as encomendas ficam pendentes e não é efetuada qualquer cobrança. O total da encomenda também é guardado em `GastoCompra` para alimentar o painel de gastos.
+O checkout é feito no fim da página do carrinho. Revalida o stock dentro de uma transação, guarda a encomenda e os respetivos itens, regista o movimento de stock e limpa o carrinho. O envio custa 3,99 € em encomendas até 35 € e é gratuito acima desse valor. O método de pagamento fica registado, mas não existe integração com gateways: as encomendas ficam pendentes e não é efetuada qualquer cobrança. O painel de gastos consulta os estados registados diretamente na encomenda.

@@ -1,36 +1,16 @@
 <?php
 
-function gastos_compras_preparar(PDO $pdo): void {
-    static $preparada = false;
-    if ($preparada) {
-        return;
-    }
-
-    $pdo->exec(
-        'CREATE TABLE IF NOT EXISTS GastoCompra (
-            IDGastoCompra INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-            IDUtilizador INT NOT NULL,
-            ReferenciaCompra VARCHAR(100) NULL,
-            ValorTotal DECIMAL(10,2) UNSIGNED NOT NULL,
-            DataCompra DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY uq_gasto_compra_referencia (IDUtilizador, ReferenciaCompra),
-            INDEX idx_gasto_compra_data (IDUtilizador, DataCompra)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
-    );
-    $preparada = true;
-}
-
 function gastos_compras_resumo(PDO $pdo, int $idUtilizador, string $periodo): array {
     $agrupamento = $periodo === 'semanal'
-        ? 'YEARWEEK(DataCompra, 3)'
-        : 'YEAR(DataCompra), MONTH(DataCompra)';
+        ? 'YEARWEEK(DataCriacao, 3)'
+        : 'YEAR(DataCriacao), MONTH(DataCriacao)';
 
     $stmt = $pdo->prepare(
         'SELECT COALESCE(AVG(periodos.Total), 0)
          FROM (
-             SELECT SUM(ValorTotal) AS Total
-             FROM GastoCompra
-             WHERE IDUtilizador = ?
+             SELECT SUM(Total) AS Total
+             FROM encomenda
+             WHERE IDUtilizador = ? AND EstadoPagamento = \'pago\' AND Estado = \'entregue\'
              GROUP BY ' . $agrupamento . '
          ) AS periodos'
     );
@@ -38,18 +18,18 @@ function gastos_compras_resumo(PDO $pdo, int $idUtilizador, string $periodo): ar
     $media = (float) $stmt->fetchColumn();
 
     $stmt = $pdo->prepare(
-        'SELECT COALESCE(SUM(ValorTotal), 0) AS TotalGasto, COUNT(*) AS TotalCompras
-         FROM GastoCompra
-         WHERE IDUtilizador = ?'
+        'SELECT COALESCE(SUM(Total), 0) AS TotalGasto, COUNT(*) AS TotalCompras
+         FROM encomenda
+         WHERE IDUtilizador = ? AND EstadoPagamento = \'pago\' AND Estado = \'entregue\''
     );
     $stmt->execute([$idUtilizador]);
     $totais = $stmt->fetch();
 
     $stmt = $pdo->prepare(
-        'SELECT ReferenciaCompra, ValorTotal, DataCompra
-         FROM GastoCompra
-         WHERE IDUtilizador = ?
-         ORDER BY DataCompra DESC, IDGastoCompra DESC
+        'SELECT NumeroEncomenda AS ReferenciaCompra, Total AS ValorTotal, DataCriacao AS DataCompra
+         FROM encomenda
+         WHERE IDUtilizador = ? AND EstadoPagamento = \'pago\' AND Estado = \'entregue\'
+         ORDER BY DataCriacao DESC, IDEncomenda DESC
          LIMIT 5'
     );
     $stmt->execute([$idUtilizador]);
@@ -64,19 +44,19 @@ function gastos_compras_resumo(PDO $pdo, int $idUtilizador, string $periodo): ar
 
 function gastos_compras_periodos(PDO $pdo, int $idUtilizador, string $periodo): array {
     if ($periodo === 'semanal') {
-        $periodoSql = "CONCAT(FLOOR(YEARWEEK(DataCompra, 3) / 100), '-W', LPAD(MOD(YEARWEEK(DataCompra, 3), 100), 2, '0'))";
-        $agrupamento = 'YEARWEEK(DataCompra, 3)';
+        $periodoSql = "CONCAT(FLOOR(YEARWEEK(DataCriacao, 3) / 100), '-W', LPAD(MOD(YEARWEEK(DataCriacao, 3), 100), 2, '0'))";
+        $agrupamento = 'YEARWEEK(DataCriacao, 3)';
     } else {
-        $periodoSql = "DATE_FORMAT(DataCompra, '%Y-%m')";
-        $agrupamento = 'YEAR(DataCompra), MONTH(DataCompra)';
+        $periodoSql = "DATE_FORMAT(DataCriacao, '%Y-%m')";
+        $agrupamento = 'YEAR(DataCriacao), MONTH(DataCriacao)';
     }
 
     $stmt = $pdo->prepare(
-        'SELECT ' . $periodoSql . ' AS Periodo, SUM(ValorTotal) AS TotalGasto, COUNT(*) AS TotalCompras
-         FROM GastoCompra
-         WHERE IDUtilizador = ?
+        'SELECT ' . $periodoSql . ' AS Periodo, SUM(Total) AS TotalGasto, COUNT(*) AS TotalCompras
+         FROM encomenda
+         WHERE IDUtilizador = ? AND EstadoPagamento = \'pago\' AND Estado = \'entregue\'
          GROUP BY ' . $agrupamento . '
-         ORDER BY MAX(DataCompra) DESC'
+         ORDER BY MAX(DataCriacao) DESC'
     );
     $stmt->execute([$idUtilizador]);
 

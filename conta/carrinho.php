@@ -1,7 +1,6 @@
 <?php
 require __DIR__ . '/ligacao.php';
 require __DIR__ . '/../produto_imagens.php';
-require __DIR__ . '/gastos.php';
 require __DIR__ . '/listas_compras.php';
 $indicativosTelefone = require __DIR__ . '/indicativos.php';
 
@@ -22,7 +21,6 @@ if ($utilizadorSessao['Tipo'] === 'funcionario') {
     exit;
 }
 
-gastos_compras_preparar($pdo);
 listas_compras_preparar($pdo);
 $idUtilizador = (int) $_SESSION['utilizador_id'];
 $listasCompra = listas_compras_do_utilizador($pdo, $idUtilizador);
@@ -691,11 +689,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             (IDEncomenda, EstadoAnterior, EstadoNovo, IDUtilizador, Nota)
                          VALUES (?, NULL, \'pedido\', ?, ?)'
                     )->execute([$idEncomenda, $idUtilizador, 'Encomenda criada pelo checkout.']);
-
-                    $pdo->prepare(
-                        'INSERT INTO GastoCompra (IDUtilizador, ReferenciaCompra, ValorTotal, DataCompra)
-                         VALUES (?, ?, ?, NOW())'
-                    )->execute([$idUtilizador, $numeroEncomenda, number_format($totalCheckout, 2, '.', '')]);
 
                     if ($guardarCompraComoLista) {
                         if ($nomeListaCheckout === '') {

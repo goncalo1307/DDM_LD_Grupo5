@@ -24,7 +24,6 @@ if ($u['Tipo'] === 'funcionario') {
     exit;
 }
 
-gastos_compras_preparar($pdo);
 $periodoGastos = isset($_GET['periodo']) && $_GET['periodo'] === 'semanal' ? 'semanal' : 'mensal';
 if (isset($_GET['exportar_gastos']) && $_GET['exportar_gastos'] === '1') {
     $periodosGastos = gastos_compras_periodos($pdo, $id, $periodoGastos);
@@ -312,7 +311,7 @@ $stmt = $pdo->prepare(
 );
 $stmt->execute([$id]);
 $totalEncomendasUtilizador = (int) $stmt->fetchColumn();
-$encomendasPorPagina = 10;
+$encomendasPorPagina = 3;
 $totalPaginasEncomendas = max(1, (int) ceil($totalEncomendasUtilizador / $encomendasPorPagina));
 $paginaEncomendas = isset($_GET['pagina_encomendas']) && is_string($_GET['pagina_encomendas'])
     && ctype_digit($_GET['pagina_encomendas'])
