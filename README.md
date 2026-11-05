@@ -1,5 +1,5 @@
 # Laboratorio2
-Projeto para avaliação Laboratório 2, Gonçalo &amp; André &amp; Fábio
+Projeto para avaliação Laboratório 2, Gonçalo Gonçalves &amp; André &amp; Fábio
 
 ## Imagens dos produtos
 
