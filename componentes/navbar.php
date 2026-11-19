@@ -36,6 +36,7 @@ $valorPesquisa = $paginaPesquisa && isset($query) ? (string) $query : '';
             <?php else: ?>
               <a href="conta/perfil.php">O meu perfil</a>
               <a href="conta/perfil.php#encomendas">As minhas encomendas</a>
+              <a href="conta/agendamentos.php">Compras agendadas</a>
               <a href="conta/perfil.php#moradas">As minhas moradas</a>
               <a href="conta/carrinho.php">O meu carrinho</a>
             <?php endif; ?>
@@ -73,6 +74,7 @@ $valorPesquisa = $paginaPesquisa && isset($query) ? (string) $query : '';
         <?php else: ?>
           <a href="conta/perfil.php">O meu perfil (<?= e($primeiroNome) ?>)</a>
           <a href="conta/perfil.php#encomendas">As minhas encomendas</a>
+          <a href="conta/agendamentos.php">Compras agendadas</a>
           <a href="conta/carrinho.php">O meu carrinho (<?= $totalCarrinho ?>)</a>
         <?php endif; ?>
         <a href="conta/logout.php">Terminar sessão</a>

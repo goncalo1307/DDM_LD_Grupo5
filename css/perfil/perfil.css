@@ -1,1 +1,21 @@
 @import url("../shared/conta.css");
+
+.schedule-status-ativo {
+  background: #e9f4ec;
+  color: #28613e;
+}
+
+.schedule-status-aguardar_aprovacao,
+.schedule-status-aguardar_confirmacao {
+  background: #fff1c2;
+  color: #705200;
+}
+
+.schedule-status-cancelado {
+  background: #fff0ec;
+  color: #a84330;
+}
+
+#compras-agendadas > .btn-small {
+  margin-top: 20px;
+}
