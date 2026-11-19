@@ -2,6 +2,7 @@
 require __DIR__ . '/ligacao.php';
 require __DIR__ . '/../produto_imagens.php';
 require __DIR__ . '/listas_compras.php';
+require __DIR__ . '/agendamento_compras.php';
 $indicativosTelefone = require __DIR__ . '/indicativos.php';
 
 if (empty($_SESSION['utilizador_id'])) {
@@ -22,6 +23,7 @@ if ($utilizadorSessao['Tipo'] === 'funcionario') {
 }
 
 listas_compras_preparar($pdo);
+agendamentos_compras_preparar($pdo);
 $idUtilizador = (int) $_SESSION['utilizador_id'];
 $listasCompra = listas_compras_do_utilizador($pdo, $idUtilizador);
 $erro = '';
@@ -399,10 +401,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$idLista) {
                 $erro = 'Lista inválida.';
             } else {
-                $stmt = $pdo->prepare('DELETE FROM ListaCompra WHERE IDListaCompra = ? AND IDUtilizador = ?');
+                $stmt = $pdo->prepare(
+                    'SELECT IDAgendamento
+                     FROM AgendamentoCompra
+                     WHERE IDListaCompra = ? AND IDUtilizador = ?
+                       AND Estado IN (\'ativo\', \'aguardar_aprovacao\', \'aguardar_confirmacao\')
+                     LIMIT 1'
+                );
                 $stmt->execute([$idLista, $idUtilizador]);
-                if ($stmt->rowCount() === 0) {
-                    $erro = 'Esta lista já não existe.';
+                if ($stmt->fetchColumn()) {
+                    $erro = 'Cancele primeiro os agendamentos ativos associados a esta lista.';
+                } else {
+                    $stmt = $pdo->prepare('DELETE FROM ListaCompra WHERE IDListaCompra = ? AND IDUtilizador = ?');
+                    $stmt->execute([$idLista, $idUtilizador]);
+                    if ($stmt->rowCount() === 0) {
+                        $erro = 'Esta lista já não existe.';
+                    }
                 }
             }
         } elseif ($acao === 'atualizar') {
@@ -886,6 +900,7 @@ unset($_SESSION['lista_compra_flash']);
         <p><?= $totalQuantidade ?> <?= $totalQuantidade === 1 ? 'artigo guardado' : 'artigos guardados' ?> na sua conta.</p>
       </div>
       <a class="btn-small btn-secondary" href="perfil.php">Voltar à minha conta</a>
+      <a class="btn-small btn-secondary" href="agendamentos.php">Compras agendadas</a>
     </div>
 
     <?php if ($ok): ?>

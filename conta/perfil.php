@@ -1,6 +1,8 @@
 <?php
 require __DIR__ . '/ligacao.php';
 require __DIR__ . '/gastos.php';
+require __DIR__ . '/listas_compras.php';
+require __DIR__ . '/agendamento_compras.php';
 $indicativosTelefone = require __DIR__ . '/indicativos.php';
 
 // Só para quem tem sessão iniciada
@@ -22,6 +24,51 @@ if (!$u) {
 if ($u['Tipo'] === 'funcionario') {
     header('Location: ../admin.php#encomendas');
     exit;
+}
+
+agendamentos_compras_preparar($pdo);
+$stmt = $pdo->prepare(
+    'SELECT COUNT(*)
+     FROM AgendamentoCompra
+     WHERE IDUtilizador = ? AND Estado = \'aguardar_confirmacao\''
+);
+$stmt->execute([$id]);
+$agendamentosAConfirmar = (int) $stmt->fetchColumn();
+$stmt = $pdo->prepare(
+    'SELECT COUNT(*)
+     FROM AgendamentoCompra
+     WHERE IDUtilizador = ? AND Estado = \'aguardar_aprovacao\''
+);
+$stmt->execute([$id]);
+$agendamentosAprovar = (int) $stmt->fetchColumn();
+$stmt = $pdo->prepare(
+    'SELECT l.Nome, a.UltimoResultado
+     FROM AgendamentoCompra a
+     JOIN ListaCompra l ON l.IDListaCompra = a.IDListaCompra
+     WHERE a.IDUtilizador = ? AND a.Estado = \'ativo\'
+       AND a.NumeroUltimaEncomenda IS NULL AND a.UltimoResultado IS NOT NULL
+       AND a.UltimoResultado <> \'Agendamento atualizado.\'
+       AND a.UltimoResultado <> \'Cliente optou por não comprar nesta ocorrência.\'
+     ORDER BY a.DataUltimaExecucao DESC'
+);
+$stmt->execute([$id]);
+$agendamentosComAviso = $stmt->fetchAll();
+$stmt = $pdo->prepare(
+    'SELECT a.IDAgendamento, a.Frequencia, a.DataProxima, a.Estado, a.UltimoResultado,
+            l.Nome AS NomeLista
+     FROM AgendamentoCompra a
+     JOIN ListaCompra l ON l.IDListaCompra = a.IDListaCompra
+     WHERE a.IDUtilizador = ?
+     ORDER BY FIELD(a.Estado, \'aguardar_aprovacao\', \'aguardar_confirmacao\', \'ativo\', \'cancelado\'),
+              a.DataProxima, a.IDAgendamento DESC'
+);
+$stmt->execute([$id]);
+$agendamentosUtilizador = $stmt->fetchAll();
+$agendamentosEmCurso = 0;
+foreach ($agendamentosUtilizador as $agendamentoUtilizador) {
+    if ($agendamentoUtilizador['Estado'] !== 'cancelado') {
+        $agendamentosEmCurso++;
+    }
 }
 
 $periodoGastos = isset($_GET['periodo']) && $_GET['periodo'] === 'semanal' ? 'semanal' : 'mensal';
@@ -320,7 +367,8 @@ $paginaEncomendas = isset($_GET['pagina_encomendas']) && is_string($_GET['pagina
 $offsetEncomendas = ($paginaEncomendas - 1) * $encomendasPorPagina;
 
 $stmt = $pdo->prepare(
-    'SELECT e.NumeroEncomenda, e.Estado, e.EstadoPagamento, e.Total, e.DataCriacao, e.DataEntrega,
+    'SELECT e.NumeroEncomenda, e.Estado, e.EstadoPagamento, e.Total, e.DataCriacao,
+            e.DataEntregaPrevista, e.DataEntrega,
             (
                 SELECT GROUP_CONCAT(CONCAT(ie.NomeProduto, \' x\', ie.Quantidade) SEPARATOR \', \')
                 FROM ItemEncomenda ie
@@ -358,12 +406,13 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
   <main class="account-main perfil-main">
     <div class="intro perfil-top">
       <div>
-        <p class="eyebrow">A sua conta Cantinho</p>
+        <p class="eyebrow">O seu Cantinho</p>
         <h1>Olá, <?= e(explode(' ', trim($u['Nome']))[0]) ?></h1>
         <p>@<?= e($u['Username']) ?><?= $desde ? ' · cliente desde ' . e($desde) : '' ?></p>
       </div>
       <div class="perfil-acoes">
         <a class="btn-small btn-secondary" href="carrinho.php">O meu carrinho</a>
+        <a class="btn-small btn-secondary" href="agendamentos.php">Compras agendadas</a>
         <a class="btn-small btn-danger" href="logout.php">Terminar sessão</a>
       </div>
     </div>
@@ -371,6 +420,79 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
     <?php if ($ok): ?>
       <div class="alert alert-ok" role="status"><?= e($ok) ?></div>
     <?php endif; ?>
+
+    <?php if ($agendamentosAConfirmar > 0): ?>
+      <div class="alert alert-aviso" role="status">
+        <?= $agendamentosAConfirmar === 1
+            ? 'Uma compra agendada precisa da sua confirmação para continuar.'
+            : $agendamentosAConfirmar . ' compras agendadas precisam da sua confirmação para continuar.' ?>
+        <a href="agendamentos.php">Rever agendamentos</a>
+      </div>
+    <?php endif; ?>
+    <?php if ($agendamentosAprovar > 0): ?>
+      <div class="alert alert-aviso" role="status">
+        <?= $agendamentosAprovar === 1
+            ? 'Uma compra recorrente aguarda a sua confirmação dos produtos, quantidades e preços.'
+            : $agendamentosAprovar . ' compras recorrentes aguardam a sua confirmação dos produtos, quantidades e preços.' ?>
+        <a href="agendamentos.php">Rever conteúdo das listas</a>
+      </div>
+    <?php endif; ?>
+    <?php foreach ($agendamentosComAviso as $avisoAgendamento): ?>
+      <div class="alert alert-aviso" role="status">
+        A compra agendada «<?= e($avisoAgendamento['Nome']) ?>» não foi criada:
+        <?= e($avisoAgendamento['UltimoResultado']) ?>
+        <a href="agendamentos.php">Ver agendamento</a>
+      </div>
+    <?php endforeach; ?>
+
+    <?php
+      $estadosAgendamento = [
+          'ativo' => 'Ativo',
+          'aguardar_aprovacao' => 'Aguarda confirmação dos artigos',
+          'aguardar_confirmacao' => 'Aguarda renovação',
+          'cancelado' => 'Cancelado',
+      ];
+      $frequenciasAgendamento = [
+          'semanal' => 'Semanal',
+          'mensal' => 'Mensal',
+      ];
+    ?>
+    <section class="account-card" id="compras-agendadas">
+      <h2>As minhas compras agendadas</h2>
+      <?php if ($agendamentosEmCurso > 0): ?>
+        <div class="alert alert-aviso" role="status">
+          Tem <?= $agendamentosEmCurso ?> <?= $agendamentosEmCurso === 1 ? 'agendamento em curso' : 'agendamentos em curso' ?>.
+          Consulte as próximas datas e confirme as compras que aguardam aprovação.
+        </div>
+      <?php endif; ?>
+      <?php if ($agendamentosUtilizador): ?>
+        <div class="orders-list">
+          <?php foreach ($agendamentosUtilizador as $agendamentoUtilizador): ?>
+            <article class="order-card">
+              <div class="order-card-heading">
+                <div><strong><?= e($agendamentoUtilizador['NomeLista']) ?></strong></div>
+                <span class="order-status schedule-status-<?= e($agendamentoUtilizador['Estado']) ?>">
+                  <?= e($estadosAgendamento[$agendamentoUtilizador['Estado']] ?? $agendamentoUtilizador['Estado']) ?>
+                </span>
+              </div>
+              <p class="order-card-items">
+                <?= e($frequenciasAgendamento[$agendamentoUtilizador['Frequencia']] ?? $agendamentoUtilizador['Frequencia']) ?>
+              </p>
+              <?php if ($agendamentoUtilizador['Estado'] !== 'cancelado'): ?>
+                <p class="order-card-delivery">Próxima data: <?= e(date('d/m/Y', strtotime($agendamentoUtilizador['DataProxima']))) ?></p>
+              <?php endif; ?>
+              <?php if (in_array($agendamentoUtilizador['Estado'], ['aguardar_aprovacao', 'aguardar_confirmacao'], true)
+                  && !empty($agendamentoUtilizador['UltimoResultado'])): ?>
+                <p class="order-card-items"><?= e($agendamentoUtilizador['UltimoResultado']) ?></p>
+              <?php endif; ?>
+            </article>
+          <?php endforeach; ?>
+        </div>
+      <?php else: ?>
+        <p>Ainda não tem compras agendadas.</p>
+      <?php endif; ?>
+      <a class="btn-small btn-secondary" href="agendamentos.php">Gerir agendamentos</a>
+    </section>
 
     <?php if (!(int) $u['EmailVerificado']): ?>
       <div class="alert alert-aviso">O seu email ainda não está verificado.</div>
@@ -416,6 +538,9 @@ $desde = $u['DataCriacao'] ? date('d/m/Y', strtotime($u['DataCriacao'])) : '';
                   <?= e($estadoPagamento[$encomenda['EstadoPagamento']] ?? $encomenda['EstadoPagamento']) ?>
                 </span>
               </div>
+              <?php if ($encomenda['DataEntregaPrevista']): ?>
+                <p class="order-card-delivery">Entrega prevista para <?= e(date('d/m/Y', strtotime($encomenda['DataEntregaPrevista']))) ?></p>
+              <?php endif; ?>
               <?php if ($encomenda['DataEntrega']): ?>
                 <p class="order-card-delivery">Entregue em <?= e(date('d/m/Y H:i', strtotime($encomenda['DataEntrega']))) ?></p>
               <?php endif; ?>

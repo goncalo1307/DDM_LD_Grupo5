@@ -1,0 +1,322 @@
+@import url("../shared/conta.css");
+
+.schedule-main {
+  max-width: 920px;
+  margin-top: 48px;
+  margin-bottom: 72px;
+}
+
+.schedule-main .account-card {
+  width: 100%;
+  margin: 0 0 24px;
+  padding: clamp(22px, 4vw, 36px);
+}
+
+.schedule-main .account-card > p {
+  line-height: 1.6;
+}
+
+.schedule-main .account-card form.schedule-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.schedule-form label {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  color: var(--green);
+  font-size: .9rem;
+  font-weight: 700;
+}
+
+.schedule-form input,
+.schedule-form select {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--green);
+  font: inherit;
+}
+
+.schedule-form input:focus,
+.schedule-form select:focus {
+  outline: 2px solid var(--green-light);
+  border-color: var(--green);
+}
+
+.schedule-form button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin: 0;
+}
+
+.schedule-content-link {
+  grid-column: 1 / -1;
+  justify-self: start;
+  color: var(--muted);
+  font-size: .9rem;
+  font-weight: 700;
+}
+
+.schedule-list-detail {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.schedule-list-detail summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.schedule-list-detail summary span {
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+.schedule-list-detail .schedule-preview-items {
+  margin-top: 12px;
+}
+
+.schedule-grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.schedule-card {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.schedule-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.schedule-heading h3 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.schedule-status {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 20px;
+  background: var(--green-light);
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.schedule-status-aguardar_confirmacao {
+  background: #fff1c2;
+  color: #705200;
+}
+
+.schedule-status-cancelado {
+  background: #eee;
+  color: #555;
+}
+
+.schedule-card > p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.schedule-notice {
+  padding: 12px;
+  border: 1px solid #f1dd9b;
+  border-radius: 9px;
+  background: #fff8e1;
+  color: #705200 !important;
+}
+
+.schedule-result {
+  padding: 12px;
+  border-radius: 9px;
+  background: var(--green-light);
+}
+
+.schedule-preview {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fffdf6;
+}
+
+.schedule-preview h4 {
+  margin: 0 0 14px;
+}
+
+.schedule-preview-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.schedule-preview-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.schedule-preview-items li > span,
+.schedule-preview-price {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+}
+
+.schedule-preview-items li > span:first-child {
+  text-align: left;
+}
+
+.schedule-preview-items small {
+  color: var(--muted);
+}
+
+.schedule-preview-total {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 18px;
+  margin: 16px 0;
+}
+
+.schedule-preview-total strong {
+  text-align: right;
+}
+
+.schedule-preview-total span:last-of-type,
+.schedule-preview-total strong:last-child {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.schedule-unavailable {
+  color: #8a1f17 !important;
+}
+
+.schedule-confirm-form {
+  margin-top: 18px !important;
+}
+
+.schedule-main .account-card form.schedule-confirm-form .schedule-confirm-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.schedule-confirm-checkbox input {
+  width: auto;
+  min-height: 0;
+  margin-top: 3px;
+}
+
+.schedule-confirm-form button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.schedule-skip-form {
+  margin-top: 8px !important;
+}
+
+.schedule-skip-form .cart-remove-button {
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.schedule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.schedule-actions form,
+.schedule-cancel-form {
+  margin: 0;
+}
+
+.schedule-edit {
+  margin-top: 18px;
+}
+
+.schedule-edit summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.schedule-edit .schedule-form {
+  margin-bottom: 16px;
+}
+
+.schedule-cancel-form .cart-remove-button {
+  margin-top: 12px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: #8a1f17;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.btn-primary {
+  background: var(--green);
+  color: #fff;
+}
+
+.btn-danger {
+  background: #fdecea;
+  color: #8a1f17;
+}
+
+.schedule-main .account-card button.btn-primary {
+  background: var(--green);
+  color: #fff;
+}
+
+.schedule-main .account-card button.btn-danger {
+  background: #fdecea;
+  color: #8a1f17;
+}
+
+.schedule-main .account-card button.btn-secondary {
+  border: 1px solid rgba(24, 53, 43, .25);
+  background: transparent;
+  color: inherit;
+}
+
+@media (max-width: 640px) {
+  .schedule-main .account-card form.schedule-form {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule-heading {
+    flex-direction: column;
+  }
+}

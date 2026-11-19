@@ -38,3 +38,13 @@ No checkout, cada utilizador pode guardar a compra como lista predefinida. Na p�
 ## Checkout
 
 O checkout é feito no fim da página do carrinho. Revalida o stock dentro de uma transação, guarda a encomenda e os respetivos itens, regista o movimento de stock e limpa o carrinho. O envio custa 3,99 € em encomendas até 35 € e é gratuito acima desse valor. O método de pagamento fica registado, mas não existe integração com gateways: as encomendas ficam pendentes e não é efetuada qualquer cobrança. O painel de gastos consulta os estados registados diretamente na encomenda.
+
+## Compras agendadas
+
+Os clientes podem escolher uma lista de compras, uma morada guardada, uma primeira data de entrega e uma frequência semanal ou mensal. A página de agendamentos permite consultar os artigos, quantidades, preços atuais e disponibilidade de cada lista. Na data devida, o processador pausa o agendamento e pede ao cliente que reveja e confirme os produtos, quantidades e preços. Só depois dessa aprovação é criada a encomenda, validado e atualizado o stock e registada a data prevista de entrega; o pagamento fica pendente e não há cobranças. Se o conteúdo ou preço mudar entre a revisão e a aprovação, o cliente tem de rever novamente. O cliente também pode ignorar uma ocorrência. A cada cinco encomendas aprovadas, o agendamento fica à espera de confirmação para continuar por mais cinco, ser alterado ou cancelado.
+
+As tabelas de agendamento são criadas automaticamente; o utilizador da base de dados precisa de permissões para criar tabelas e, na atualização do estado do agendamento, alterar a tabela. Para executar os agendamentos, configure o Agendador de Tarefas do Windows para correr diariamente o processador PHP pela linha de comandos, por exemplo:
+
+`C:\xampp\php\php.exe C:\caminho\para\DDM_LD_Grupo5\processar_agendamentos.php`
+
+O caminho de `php.exe` e o da aplicação devem ser ajustados à instalação local. A página de perfil mostra os avisos de aprovação pendente quando o cliente entra na conta; não existe envio de email ou notificação push.
